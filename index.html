@@ -76,7 +76,10 @@ button{font:inherit;color:inherit}
 .media{display:flex;justify-content:center;align-items:center;min-height:0;flex:1}
 .zoom{width:min(78vw,128vh);aspect-ratio:16/9;max-width:100%;border-radius:6px;border:1px solid var(--line);background-repeat:no-repeat;box-shadow:0 30px 80px #0008}
 .icon{width:min(40vh,40vw);max-width:100%;aspect-ratio:1;object-fit:contain;border-radius:6px;box-shadow:0 30px 80px #0008}
-canvas.pix{width:min(60vw,58vh);aspect-ratio:88/64;max-width:100%;image-rendering:pixelated;border-radius:6px;box-shadow:0 30px 80px #0008}
+/* .photo scales any picture to one height, small icons up and big photos down */
+.photo{display:block;height:54vh;width:auto;max-width:100%;object-fit:contain;border-radius:6px;box-shadow:0 30px 80px #0008}
+canvas.pix{image-rendering:pixelated}
+.ansgrid .photo{height:auto;width:100%;max-height:50vh}
 .sil{width:min(70vw,60vh);max-width:100%;aspect-ratio:4/3;object-fit:contain;filter:brightness(0) invert(.9) drop-shadow(0 0 30px color-mix(in srgb,var(--accent) 60%,transparent))}
 .sil.off{filter:drop-shadow(0 20px 40px #000a)}
 .emoji{white-space:nowrap;font-size:clamp(56px,min(11vw,22vh),220px);line-height:1.1;text-align:center;letter-spacing:.08em;font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif}
@@ -88,7 +91,7 @@ canvas.pix{width:min(60vw,58vh);aspect-ratio:88/64;max-width:100%;image-renderin
 .ansgrid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(16px,3vw,60px);align-items:center}
 .ansgrid .media{flex:none}
 .ansgrid .zoom{width:100%}
-.ansgrid .sil,.ansgrid .icon,.ansgrid canvas.pix{width:100%;max-height:50vh}
+.ansgrid .sil,.ansgrid .icon{width:100%;max-height:50vh}
 
 .rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(12px,2vw,32px) clamp(20px,4vw,70px);margin:0;padding:0;list-style:none;counter-reset:r}
 .rules li{display:grid;grid-template-columns:auto 1fr;gap:.8em;font-size:clamp(16px,1.8vw,32px);line-height:1.35;min-width:0}
@@ -113,6 +116,11 @@ canvas.pix{width:min(60vw,58vh);aspect-ratio:88/64;max-width:100%;image-renderin
 .brow .sc{font-family:var(--f-mono);font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
 .brow:first-child .nm,.brow:first-child .sc{color:var(--cs)}
 .empty{color:var(--muted);font-size:clamp(16px,1.8vw,30px)}
+.brow.rv{opacity:0;transform:translateX(-16px);transition:opacity .35s,transform .35s}
+.brow.rv.on{opacity:1;transform:none}
+.after{opacity:0;transition:opacity .5s}
+.after.on{opacity:1}
+#slide.center .after{display:grid;gap:clamp(14px,3vh,40px);justify-items:center}
 
 /* round intro: centered, with the big start button */
 #slide.center{align-items:center;text-align:center}
@@ -257,6 +265,8 @@ td.tot{font-family:var(--f-mono);font-weight:700;color:var(--cs)}
 .opt.dim{opacity:.4}
 .hintlist{margin:0;padding-left:1.2em;display:grid;gap:4px;font-size:clamp(16px,1.6vw,28px);color:var(--muted);line-height:1.35}
 @media (prefers-reduced-motion:reduce){.pop{animation:none}}
+.guide{color:var(--muted);font-size:15px;text-decoration:underline;text-underline-offset:3px}
+.guide:hover{color:var(--ink)}
 .linkbtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;text-decoration:underline;text-underline-offset:3px;justify-self:center;padding:6px}
 
 @media (max-width:700px){
@@ -276,6 +286,7 @@ td.tot{font-family:var(--f-mono);font-weight:700;color:var(--cs)}
     <p class="lead">Домашняя игра в формате Квиз Плиз. Команды, листочки и ведущий у экрана.</p>
     <button class="start" id="bEnter">Войти</button>
     <p class="small">Со звуком: после входа заиграет музыка.</p>
+    <a class="guide" href="guide.html" target="_blank" rel="noopener">Гайд ведущему</a>
   </div>
 </section>
 
@@ -285,6 +296,7 @@ td.tot{font-family:var(--f-mono);font-weight:700;color:var(--cs)}
     <h1 class="h2">Выберите категорию</h1>
     <div class="cards" id="cards"></div>
     <p class="small">Новые категории появятся здесь.</p>
+    <a class="guide" href="guide.html" target="_blank" rel="noopener">Гайд ведущему</a>
   </div>
 </section>
 
@@ -363,101 +375,15 @@ td.tot{font-family:var(--f-mono);font-weight:700;color:var(--cs)}
       <kbd>F</kbd><span>полный экран</span>
       <kbd>Home</kbd><span>в начало категории</span>
     </div>
-    <div class="row"><span style="flex:1"></span><button class="btn pri" id="closeHelp">Понятно</button></div>
+    <div class="row"><a class="guide" href="guide.html" target="_blank" rel="noopener">Гайд ведущему</a><span style="flex:1"></span><button class="btn pri" id="closeHelp">Понятно</button></div>
   </div>
 </div>
 
+<script>window.KVIZ_CATS=[];</script>
+<script src="categories/dota-cs2.js"></script>
 <script>
-/* ================= ВОПРОСЫ ================= */
-const DOTA_CS = [
-{
-  name:"Разминка", kind:"choice", time:30, pts:"1 балл",
-  intro:"Семь вопросов с вариантами. Пишем букву или сам ответ.",
-  qs:[
-    {g:"dota", q:"Как называются две стороны в Доте 2?", o:["Силы Света и Силы Тьмы","Альянс и Орда","Стражи и Плеть","Небеса и Преисподняя"], a:0,
-     note:"Стражи и Плеть — стороны в первой Доте, которая была картой для Варкрафта III."},
-    {g:"cs", q:"Сколько раундов нужно выиграть, чтобы взять карту в КС2?", o:["12","13","15","16"], a:1,
-     note:"В КС2 играют до 13 побед из 24 раундов. В КС:ГО играли до 16."},
-    {g:"dota", q:"Какая команда выиграла самый первый The International в 2011 году?", o:["Natus Vincere","Team Spirit","Team Liquid","OG"], a:0,
-     note:"Na'Vi забрали миллион долларов на первом The International в Кёльне."},
-    {g:"cs", q:"Сколько секунд тикает заложенная бомба в соревновательной КС2?", o:["35","40","45","60"], a:1},
-    {g:"dota", q:"Какой предмет даёт герою вторую жизнь?", o:["Black King Bar","Blink Dagger","Aegis of the Immortal","Divine Rapier"], a:2},
-    {g:"cs", q:"Сколько стоит набор сапёра в КС2?", o:["$200","$400","$500","$650"], a:1},
-    {g:"dota", q:"Какая команда первой выиграла The International два раза подряд?", o:["Team Spirit","Team Liquid","OG","Natus Vincere"], a:2,
-     note:"OG взяли The International в 2018 и 2019 годах."}
-  ]
-},
-{
-  name:"Картинки", kind:"image", time:40, pts:"1 балл",
-  intro:"Узнайте героя, способность, предмет или оружие по фрагменту.",
-  qs:[
-    {g:"dota", q:"Чья это рука?", img:"img/pudge.png", fx:{k:"zoom",x:88,y:15,s:2.3}, a:"Pudge", note:"Тот самый крюк."},
-    {g:"dota", q:"Чей это камень на лбу?", img:"img/crystal_maiden.png", fx:{k:"zoom",x:50,y:0,s:3}, a:"Crystal Maiden", note:"В народе — Кристалка или ЦМ."},
-    {g:"dota", q:"Чья это ультимативная способность?", img:"img/enigma_black_hole.png", fx:{k:"icon"}, a:"Enigma", note:"Ульта Black Hole затягивает всех врагов в центр."},
-    {g:"dota", q:"Чья это ультимативная способность?", img:"img/tidehunter_ravage.png", fx:{k:"icon"}, a:"Tidehunter", note:"Ульта Ravage: щупальца подбрасывают всех врагов вокруг."},
-    {g:"dota", q:"Какой это предмет?", img:"img/blink.png", fx:{k:"pixel",b:5}, a:"Blink Dagger", note:"Телепорт на короткую дистанцию. Его нельзя прожать, если герой недавно получил урон."},
-    {g:"cs", q:"Что это за оружие?", img:"img/negev.png", fx:{k:"sil"}, a:"Negev", note:"Пулемёт за $1700. Чем дольше стреляешь, тем точнее."},
-    {g:"cs", q:"Что это за оружие?", img:"img/zeus.png", fx:{k:"sil"}, a:"Zeus x27", note:"Электрошокер на один выстрел, $200."}
-  ]
-},
-{
-  name:"Эмодзи-шарады", kind:"emoji", time:40, pts:"1 балл", breakAfter:true,
-  intro:"Расшифруйте эмодзи. Это герой, карта или фраза из игры — подсказка в углу.",
-  qs:[
-    {g:"dota", e:"🧙‍♂️ 🔥 ❄️ ⚡", hint:"Герой", a:"Invoker", note:"Огонь, лёд и молния — его три сферы: Exort, Quas и Wex."},
-    {g:"cs", e:"🏜️ 2️⃣", hint:"Карта", a:"Dust II"},
-    {g:"dota", e:"🐒 👑", hint:"Герой", a:"Monkey King"},
-    {g:"cs", e:"🏗️ 😵‍💫", hint:"Карта", a:"Vertigo", note:"В переводе — головокружение. Карта на крыше недостроенного небоскрёба."},
-    {g:"dota", e:"🐉 🛡️ ⚔️", hint:"Герой", a:"Dragon Knight"},
-    {g:"dota", e:"💣 💣 💣 🤪", hint:"Герой", a:"Techies"},
-    {g:"cs", e:"💣 ➡️ 🌱", hint:"Фраза", a:"«Бомба заложена»", note:"В оригинале бомбу «сажают», как растение. Отсюда росток."}
-  ]
-},
-{
-  name:"Дота против КС", kind:"open", time:45, pts:"1 балл",
-  intro:"Обычные вопросы без вариантов. Пишем ответ словами или числом.",
-  qs:[
-    {g:"dota", q:"В каком году вышла Дота 2?", a:"2013", note:"Официальный релиз — 9 июля 2013 года."},
-    {g:"cs", q:"Какое максимальное количество денег может быть у игрока в соревновательной КС2?", a:"$16 000"},
-    {g:"dota", q:"Сколько слотов в основном инвентаре героя (без рюкзака, нейтрального слота и телепорта)?", a:"6"},
-    {g:"cs", q:"Сколько стоит бронежилет со шлемом в КС2?", a:"$1000", note:"Без шлема — $650."},
-    {g:"dota", q:"Какое здание нужно уничтожить на базе соперника, чтобы победить?", a:"Трон (Древний)"},
-    {g:"cs", q:"За какую команду играл s1mple, когда выиграл свой первый мейджор (Стокгольм, 2021)?", a:"Natus Vincere", note:"Na'Vi прошли тот мейджор, не проиграв ни одной карты."},
-    {g:"dota", q:"Какая команда выиграла The International в 2021 году с рекордным призовым фондом около $40 млн?", a:"Team Spirit", note:"Spirit выиграли и The International 2023."}
-  ]
-},
-{
-  name:"Ставки", kind:"bet", time:60, pts:"ставка 1–3",
-  intro:"Рядом с ответом пишем ставку: 1, 2 или 3. Каждую ставку можно использовать два раза за раунд. Верно — плюс ставка, ошибка — минус ставка.",
-  qs:[
-    {g:"dota", q:"Как называется жанр, к которому относится Дота 2? Четыре буквы.", a:"МОБА", note:"Многопользовательская онлайн-арена."},
-    {g:"cs", q:"Сколько секунд длится разминирование бомбы без набора сапёра?", a:"10", note:"С набором сапёра — 5 секунд."},
-    {g:"dota", q:"Под каким ником известен создатель первой Доты, который потом делал Доту 2?", a:"IceFrog"},
-    {g:"cs", q:"Какая команда выиграла первый мейджор по КС:ГО в Катовице в 2014 году?", a:"Virtus.pro"},
-    {g:"dota", q:"Какой максимальный уровень героя в Доте 2?", a:"30"},
-    {g:"cs", q:"Как называется режим КС2, где команды играют двое на двое на маленьких картах?", a:"«Напарники»"}
-  ]
-},
-{
-  name:"Чёрный ящик", kind:"box", time:30, pts:"3 / 2 / 1",
-  intro:"Три загадки по три подсказки. Ответ можно написать после любой подсказки: после первой — 3 балла, после второй — 2, после третьей — 1. Рядом с ответом пишем номер подсказки.",
-  qs:[
-    {g:"dota", hints:["Я нейтрал, но меня боятся обе стороны.","Каждый раз, когда меня убивают, я возвращаюсь сильнее.","После моей смерти остаётся Аегис."], a:"Рошан"},
-    {g:"cs", hints:["Я одна из самых дорогих покупок в КС2 и убиваю с одного выстрела.","За убийство мной дают всего $100 — втрое меньше, чем за обычную винтовку.","Меня зовут «слон» или «авик»."], a:"AWP", img:"img/awp.png"},
-    {g:"cs", hints:["Я живу на нескольких картах КС, но в матче не участвую.","Меня можно убить, но денег за это не дадут.","Ко-ко-ко."], a:"Курица"}
-  ]
-}
-];
-
-/* ================= КАТЕГОРИИ ================= */
-/* новая категория = ещё один объект с массивом раундов в том же формате */
-const CATEGORIES = [
-  {id:"dota-cs2", name:"Дота × КС2", sub:"Dota 2 и Counter-Strike 2: герои, карты, оружие и турниры", rounds:DOTA_CS,
-   pics:["img/pudge.png","img/awp.png"],
-   /* перестрелка при ничьей: ответ — число, побеждает тот, кто ближе */
-   tiebreak:{g:"cs", q:"Сколько стоит в КС2 полный закуп террориста: AK-47, бронежилет со шлемом, молотов, флешка, дымовая и осколочная гранаты?", a:"$4900",
-     note:"AK-47 — $2700, броня со шлемом — $1000, молотов — $400, флешка — $200, дымовая — $300, осколочная — $300."}}
-];
+/* ================= ВОПРОСЫ — в categories/*.js ================= */
+const CATEGORIES = window.KVIZ_CATS;
 
 /* ================= СЛАЙДЫ ================= */
 let ROUNDS=[], slides=[], totalQ=0, cat=null;
@@ -492,6 +418,8 @@ const total=t=>ROUNDS.reduce((s,_,i)=>s+(+t.pts[i]||0),0);
 /* teams sharing first place; a tie needs two or more of them */
 function leaders(){const ts=state.teams;if(!ts.length)return[];const m=Math.max(...ts.map(total));return ts.filter(t=>total(t)===m)}
 const isTie=()=>state.teams.length>1&&leaders().length>1;
+/* question tag → chip label and colour: cat.tags = {key:{label, tone}}, tone is one of dota | cs | ct | good */
+const tagOf=q=>q.g&&cat.tags&&cat.tags[q.g];
 const quote=t=>`«${esc(t.name)}»`;
 const joinNames=ts=>ts.length<3?ts.map(quote).join(" и "):ts.slice(0,-1).map(quote).join(", ")+" и "+quote(ts[ts.length-1]);
 
@@ -503,8 +431,11 @@ function mediaHTML(q,reveal){
     return `<div class="zoom" style="background-image:url('${q.img}');background-size:${fx.s*100}%;background-position:${fx.x}% ${fx.y}%"></div>`;
   }
   if(fx.k==="icon") return `<img class="icon" src="${q.img}" alt="">`;
-  if(fx.k==="pixel") return reveal?`<img class="icon" style="aspect-ratio:88/64" src="${q.img}" alt="">`:`<canvas class="pix" data-src="${q.img}" data-b="${fx.b}"></canvas>`;
+  /* pixel: b = size of one block in source pixels; blur: r = blur radius in px; plain: picture as is */
+  if(fx.k==="pixel") return reveal?`<img class="photo" src="${q.img}" alt="">`:`<canvas class="pix photo" data-src="${q.img}" data-b="${fx.b}"></canvas>`;
+  if(fx.k==="blur") return `<img class="photo" src="${q.img}" alt="" style="${reveal?"":`filter:blur(${fx.r||24}px) saturate(1.2)`}">`;
   if(fx.k==="sil") return `<img class="sil ${reveal?"off":""}" src="${q.img}" alt="">`;
+  if(fx.k==="plain") return `<img class="photo" src="${q.img}" alt="">`;
   if(q.img) return `<img class="sil off" src="${q.img}" alt="">`;
   return "";
 }
@@ -513,6 +444,7 @@ function pixelate(){
     const im=new Image();
     im.onload=()=>{
       const b=+c.dataset.b, w=Math.ceil(im.width/b), h=Math.ceil(im.height/b);
+      c.style.aspectRatio=`${im.width}/${im.height}`;
       c.width=w;c.height=h;
       const x=c.getContext("2d");x.imageSmoothingEnabled=true;x.drawImage(im,0,0,w,h);
     };
@@ -530,7 +462,7 @@ function hud(s){
     if(s.t==="q"||s.t==="box") h+=`<span>Вопрос ${s.qi+1} / ${r.qs.length}</span>`;
     if(s.t==="ans") h+=`<span>Ответ ${s.qi+1} / ${r.qs.length}</span>`;
     const q=r.qs[s.qi];
-    if(q&&(s.t==="q"||s.t==="box"||s.t==="ans")) h+=`<span class="chip ${q.g}">${q.g==="dota"?"Dota 2":"CS2"}</span>`;
+    const tg=q&&tagOf(q); if(tg&&(s.t==="q"||s.t==="box"||s.t==="ans")) h+=`<span class="chip" style="color:var(--${tg.tone})">${esc(tg.label)}</span>`;
   } else h+=`<span class="round">${esc(cat.name)}</span>`;
   h+=`<span class="spacer"></span><span class="clock" id="clock" hidden></span>`;
   return h;
@@ -540,8 +472,8 @@ function slideHTML(s){
   switch(s.t){
   case "title": return `
     <div class="eyebrow">Домашний квиз · ${ROUNDS.length} раундов · ${totalQ} вопросов</div>
-    <h1 class="big">Дота<br>× КС2</h1>
-    <p class="lead">Герои, карты, пушки и турниры. Рассаживайтесь по командам, берите ручки и листочки.</p>`;
+    <h1 class="big">${(cat.title||[cat.name]).map(esc).join("<br>")}</h1>
+    <p class="lead">${esc(cat.lead||"Рассаживайтесь по командам, берите ручки и листочки.")}</p>`;
   case "rules": return `
     <div class="eyebrow">Правила</div>
     <ul class="rules">
@@ -602,7 +534,7 @@ function slideHTML(s){
   case "scores": case "end": case "champ": {
     const ts=[...state.teams].sort((a,b)=>total(b)-total(a));
     const max=Math.max(1,...ts.map(total));
-    const rows=ts.length?ts.map((t,i)=>`<div class="brow"><span class="pl">${i+1}</span><span class="nm">${esc(t.name)}</span><span class="bar"><i style="width:${total(t)/max*100}%"></i></span><span class="sc">${total(t)}</span></div>`).join(""):`<p class="empty">Добавьте команды: клавиша S.</p>`;
+    const rows=ts.length?ts.map((t,i)=>`<div class="brow rv"><span class="pl">${i+1}</span><span class="nm">${esc(t.name)}</span><span class="bar"><i style="width:0" data-w="${total(t)/max*100}%"></i></span><span class="sc">${total(t)}</span></div>`).join(""):`<p class="empty">Добавьте команды: клавиша S.</p>`;
     const finish=`<div class="acts"><button class="start" data-act="newgame">Новая игра</button><button class="start ghost" data-act="menu">К категориям</button></div>`;
     if(s.t==="scores") return `<div class="eyebrow">После раунда ${s.ri+1}</div>
       <h1 class="h2">Таблица очков</h1><div class="board">${rows}</div>
@@ -610,14 +542,14 @@ function slideHTML(s){
     if(s.t==="champ"){
       const w=state.teams[state.tbWinner];
       return `<div class="eyebrow">Перестрелка сыграна</div>
-        <h1 class="h2">${w?`Побеждает ${quote(w)}`:"Победитель не выбран"}</h1><div class="board">${rows}</div>${finish}`;
+        <h1 class="h2 after">${w?`Побеждает ${quote(w)}`:"Победитель не выбран"}</h1><div class="board">${rows}</div><div class="after">${finish}</div>`;
     }
     if(isTie()) return `<div class="eyebrow">Финальный счёт</div>
-      <h1 class="h2">Ничья: ${joinNames(leaders())}</h1><div class="board">${rows}</div>
-      <p class="lead">Решает перестрелка: один вопрос, ответ — число. Побеждает тот, кто ближе.</p>
-      <div class="acts"><button class="start" data-act="next">Перестрелка</button></div>`;
+      <h1 class="h2 after">Ничья: ${joinNames(leaders())}</h1><div class="board">${rows}</div>
+      <div class="after"><p class="lead">Решает перестрелка: один вопрос, ответ — число. Побеждает тот, кто ближе.</p>
+      <div class="acts"><button class="start" data-act="next">Перестрелка</button></div></div>`;
     return `<div class="eyebrow">Финальный счёт</div>
-      <h1 class="h2">${ts[0]?`Побеждает ${quote(ts[0])}`:"Игра окончена"}</h1><div class="board">${rows}</div>${finish}`;
+      <h1 class="h2 after">${ts[0]?`Побеждает ${quote(ts[0])}`:"Игра окончена"}</h1><div class="board">${rows}</div><div class="after">${finish}</div>`;
   }
   case "tb": {
     const t=cat.tiebreak;
@@ -638,7 +570,7 @@ function slideHTML(s){
     <div class="eyebrow">Половина позади</div>
     <h1 class="big">Перерыв</h1>
     <div class="bigclock" id="bigclock">10:00</div>
-    <p class="lead">Дальше: обычные вопросы, ставки и чёрный ящик.</p>`;
+    <p class="lead">Дальше: ${ROUNDS.slice(ROUNDS.findIndex(r=>r.breakAfter)+1).map(r=>r.name.toLowerCase()).join(", ")}.</p>`;
   }
 }
 
@@ -760,27 +692,58 @@ function paintTimer(){
 function startTimer(){
   if(!hasTimer(slides[state.i])||tLeft<=0) return;
   tRun=true;
-  tId=setInterval(()=>{tLeft--;paintTimer();if(tLeft<=0){stopTimer();beep()}},1000);
+  tId=setInterval(()=>{tLeft--;paintTimer();if(tLeft<=0){stopTimer();sfx("timeup")}},1000);
   paintTimer();
 }
 function stopTimer(){tRun=false;clearInterval(tId);paintTimer()}
 function toggleTimer(){tRun?stopTimer():startTimer()}
 function resetTimer(){stopTimer();tLeft=tFull;paintTimer()}
+/* ---------- sound effects: synthesized, no files; loudness follows the music volume ---------- */
 let actx;
-function beep(){
-  try{
-    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
-    [0,.28,.56].forEach((d,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.type="square";o.frequency.value=i===2?520:780;
-      g.gain.setValueAtTime(.0001,actx.currentTime+d);g.gain.exponentialRampToValueAtTime(.18,actx.currentTime+d+.02);g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+d+(i===2?.6:.2));
-      o.connect(g).connect(actx.destination);o.start(actx.currentTime+d);o.stop(actx.currentTime+d+.7)});
-  }catch(e){}
+function ac(){actx=actx||new (window.AudioContext||window.webkitAudioContext)();if(actx.state==="suspended")actx.resume();return actx}
+function tone(f,at,dur,{type="triangle",vol=.2,to=0}={}){
+  const a=ac(), t=a.currentTime+at, o=a.createOscillator(), g=a.createGain(), lp=a.createBiquadFilter();
+  o.type=type; o.frequency.setValueAtTime(f,t); if(to) o.frequency.exponentialRampToValueAtTime(to,t+dur);
+  lp.type="lowpass"; lp.frequency.value=2600;
+  const v=Math.max(.0002,vol*Math.min(1.5,master*1.2));
+  g.gain.setValueAtTime(.0001,t); g.gain.exponentialRampToValueAtTime(v,t+.015); g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(lp).connect(g).connect(a.destination); o.start(t); o.stop(t+dur+.05);
+}
+const SFX={
+  jingle(){[523,659,784,1047].forEach((f,i)=>tone(f,i*.1,.26,{vol:.2}));tone(1568,.42,.7,{type:"sine",vol:.1})},
+  timeup(){tone(233,0,.95,{type:"sawtooth",vol:.18});tone(175,0,.95,{type:"square",vol:.07});tone(233,1.05,.5,{type:"sawtooth",vol:.14})},
+  reveal(){tone(880,0,.55,{type:"sine",vol:.16});tone(1319,.07,.7,{type:"sine",vol:.09})},
+  tick(){tone(587,0,.14,{vol:.12})},
+  top(){tone(784,0,.18,{vol:.16});tone(1175,.12,.45,{vol:.14})},
+  fanfare(){
+    [[392,0,.16],[523,.17,.16],[659,.34,.16],[784,.51,.34],[659,.86,.14],[784,1.01,1.3]].forEach(([f,a,d])=>{tone(f,a,d,{type:"sawtooth",vol:.11});tone(f*2,a,d,{vol:.07})});
+    [523,659,784].forEach(f=>tone(f,1.01,1.5,{type:"triangle",vol:.08}));
+  }
+};
+function sfx(n){if(!unlocked||master<=0)return;try{SFX[n]()}catch(e){}}
+
+/* ---------- score table: rows open from last place to first ---------- */
+let rvTimers=[], revealing=false;
+function clearReveal(){rvTimers.forEach(clearTimeout);rvTimers=[];revealing=false}
+function revealBoard(instant){
+  clearReveal();
+  const rows=[...document.querySelectorAll("#slide .brow")].reverse(), after=[...document.querySelectorAll("#slide .after")];
+  const open=r=>{r.classList.add("on");const b=r.querySelector(".bar i");if(b)b.style.width=b.dataset.w};
+  const s=slides[state.i];
+  const fin=quiet=>{revealing=false;after.forEach(a=>a.classList.add("on"));if(!quiet&&(s.t==="end"&&!isTie()||s.t==="champ"&&state.tbWinner!==null))sfx("fanfare")};
+  if(instant||!rows.length||matchMedia("(prefers-reduced-motion: reduce)").matches){rows.forEach(open);fin(instant);return}
+  revealing=true;
+  let at=400;
+  rows.forEach((r,k)=>{const last=k===rows.length-1;if(last)at+=500;rvTimers.push(setTimeout(()=>{open(r);sfx(last?"top":"tick")},at));at+=650});
+  rvTimers.push(setTimeout(()=>fin(false),at));
 }
 function musicBtn(){musicOn=!musicOn;curMode=null;syncMusic();paintMusic()}
 
 /* ---------- navigation ---------- */
 function show(keepTimer){
   const s=slides[state.i], q=ROUNDS[s.ri]&&ROUNDS[s.ri].qs[s.qi];
-  document.documentElement.style.setProperty("--accent", q? (q.g==="cs"?"var(--cs)":"var(--dota)") : s.t.startsWith("tb")?"var(--cs)":(s.ri%2?"var(--cs)":"var(--dota)"));
+  const tg=q&&tagOf(q), tones=cat.tones||["dota","cs"];
+  document.documentElement.style.setProperty("--accent", `var(--${tg?tg.tone:s.t.startsWith("tb")?tones[1%tones.length]:tones[(s.ri||0)%tones.length]})`);
   $("#hud").innerHTML=hud(s);
   const el=$("#slide"); el.innerHTML=slideHTML(s);
   if(!keepTimer){el.style.animation="none"; el.offsetHeight; el.style.animation=""}
@@ -790,6 +753,7 @@ function show(keepTimer){
   paintDock(s); pixelate();
   if(keepTimer) paintTimer(); else setupTimer();
   syncMusic();
+  revealBoard(!!keepTimer);
 }
 function act(d){
   if(d.act==="next") go(1);
@@ -801,13 +765,16 @@ function act(d){
    once a round is started, every next question starts its timer by itself, and so do the break and the shoot-out */
 function go(d){
   const prev=slides[state.i];
-  if(d>0&&prev.t==="ans"&&!state.reveal){state.reveal=true;show(true);return}
+  if(d>0&&revealing){revealBoard(true);return}
+  if(d>0&&prev.t==="ans"&&!state.reveal){state.reveal=true;show(true);sfx("reveal");return}
   if(d>0&&(prev.t==="end"&&!isTie()||prev.t==="tbans"&&state.tbWinner===null||prev.t==="champ")) return;
   if(d<0&&prev.t==="champ"){state.i=slides.findIndex(x=>x.t==="tbans");state.reveal=true;show();return}
   const n=Math.max(0,Math.min(slides.length-1,state.i+d));
   if(n===state.i) return;
   state.i=n; state.reveal=d<0; show();
   const s=slides[n];
+  if(d>0&&(prev.t==="round"||s.t==="tb")) sfx("jingle");
+  if(d>0&&s.t==="tbans") sfx("reveal");
   if(d>0&&hasTimer(s)&&(["round","q","box"].includes(prev.t)||s.t==="break"||s.t==="tb")) startTimer();
 }
 
@@ -834,7 +801,7 @@ $("#resetAll").onclick=()=>{
   newGame();resetArm=false;$("#resetNote").hidden=true;save();paintScores();show();
 };
 function openScores(){stopTimer();paintScores();$("#ovScores").hidden=false;resetArm=false;$("#resetNote").hidden=true}
-function closeScores(){$("#ovScores").hidden=true;show()}
+function closeScores(){$("#ovScores").hidden=true;show(true)}
 $("#closeScores").onclick=closeScores;
 $("#bScores").onclick=openScores;
 $("#bHelp").onclick=()=>{$("#ovHelp").hidden=false};

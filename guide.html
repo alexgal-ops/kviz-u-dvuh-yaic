@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0e1014">
+<title>Гайд ведущему — Квиз у двух яиц</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='22' cy='36' rx='14' ry='18' fill='%23efe4cf'/%3E%3Cellipse cx='44' cy='36' rx='14' ry='18' fill='%23e3a63b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@700;900&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one reading column with a sticky contents rail on wide screens; same dark game-night palette as the quiz. */
+:root{
+  color-scheme:dark;
+  --bg:#0e1014; --panel:#161a21; --line:#262c36; --ink:#ece6da; --muted:#8d929c;
+  --red:#d2452c; --ochre:#e3a63b; --blue:#6b9be0;
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"Golos Text","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:17px;line-height:1.6}
+a{color:var(--ochre)}
+:focus-visible{outline:2px solid var(--blue);outline-offset:3px}
+.wrap{max-width:1080px;margin:0 auto;padding-block:clamp(28px,6vw,72px) 80px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;grid-template-columns:220px minmax(0,1fr);gap:56px}
+nav.toc{position:sticky;top:32px;align-self:start;display:grid;gap:4px;font-size:15px}
+nav.toc a{color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:8px}
+nav.toc a:hover{color:var(--ink);background:var(--panel)}
+nav.toc .back{color:var(--ochre);margin-bottom:12px}
+main{min-width:0;max-width:68ch}
+h1{font-family:var(--f-display);font-weight:900;font-size:clamp(34px,6vw,60px);line-height:1;margin:0 0 18px;text-wrap:balance}
+h2{font-family:var(--f-display);font-weight:700;font-size:clamp(21px,2.6vw,28px);line-height:1.2;margin:56px 0 14px;scroll-margin-top:24px}
+h3{font-size:18px;margin:26px 0 6px}
+p{margin:0 0 12px}
+.lead{font-size:clamp(18px,2vw,21px);color:var(--muted)}
+ol,ul{margin:0 0 14px;padding-left:1.3em}
+li{margin:4px 0}
+li::marker{color:var(--muted)}
+.steps{list-style:none;padding:0;counter-reset:s;display:grid;gap:10px}
+.steps li{counter-increment:s;display:grid;grid-template-columns:2.2em 1fr;gap:10px;margin:0}
+.steps li::before{content:counter(s);font-family:var(--f-display);font-weight:700;color:var(--red)}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin:16px 0;color:var(--muted)}
+.note b{color:var(--ink)}
+table{border-collapse:collapse;width:100%;font-size:16px}
+.tw{overflow-x:auto;margin:10px 0 18px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:14px}
+td:first-child{white-space:nowrap}
+kbd{font-family:var(--f-mono);font-size:14px;background:var(--panel);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 8px;white-space:nowrap}
+@media (max-width:820px){.wrap{grid-template-columns:1fr;gap:24px}nav.toc{position:static;grid-auto-flow:row}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="toc" aria-label="Разделы">
+    <a class="back" href="./">← К квизу</a>
+    <a href="#prep">Перед игрой</a>
+    <a href="#flow">Как идёт игра</a>
+    <a href="#rounds">Раунды и очки</a>
+    <a href="#tie">Ничья</a>
+    <a href="#deck">Пульт и клавиши</a>
+    <a href="#music">Музыка и звуки</a>
+    <a href="#tips">Советы ведущему</a>
+    <a href="#trouble">Если что-то пошло не так</a>
+  </nav>
+  <main>
+    <h1>Гайд ведущему</h1>
+    <p class="lead">Как провести «Квиз у двух яиц» дома: что подготовить, как идёт игра и что делать, если что-то сломалось. Одна категория занимает около полутора часов вместе с перерывом.</p>
+
+    <h2 id="prep">Перед игрой</h2>
+    <ul>
+      <li>Ноутбук, подключённый к телевизору, и колонка или звук телевизора.</li>
+      <li>Листочки и ручки на каждую команду, по одному листу на раунд. Шесть раундов — шесть листов.</li>
+      <li>Команды по 2–6 человек. Удобнее всего играть от двух до пяти команд.</li>
+      <li>Откройте квиз на ноутбуке, нажмите <kbd>F</kbd> — экран развернётся целиком. Этот гайд держите на телефоне.</li>
+    </ul>
+    <div class="note"><b>Ответов заранее нет ни у кого, включая ведущего.</b> Они появляются только на слайдах разбора после раунда. Если хотите играть сами, ведите и отвечайте вместе со всеми.</div>
+
+    <h2 id="flow">Как идёт игра</h2>
+    <ol class="steps">
+      <li><span>«Войти» → выбрать категорию → вписать команды → «Начать игру».</span></li>
+      <li><span>Заставка и правила: прочитайте правила вслух.</span></li>
+      <li><span>Заставка раунда: объясните, как устроен раунд, и нажмите «Старт раунда».</span></li>
+      <li><span>Вопросы: прочитайте вопрос вслух. Таймер запускается сам, время видно справа вверху и полоской внизу. Когда время вышло, звучит сигнал. Листайте к следующему вопросу.</span></li>
+      <li><span>«Сдаём листочки»: соберите листы. Дальше идёт разбор.</span></li>
+      <li><span>Разбор: на каждом слайде сначала только вопрос. Спросите, что ответили команды. Следующий клик открывает правильный ответ.</span></li>
+      <li><span>Таблица очков: нажмите <kbd>S</kbd>, впишите баллы за раунд, нажмите «Готово». Таблица откроется с последнего места к первому.</span></li>
+      <li><span>После третьего раунда — перерыв с отсчётом 10 минут. Его можно перелистнуть раньше.</span></li>
+      <li><span>Финал: победитель и кнопки «Новая игра» и «К категориям». При ничьей — перестрелка.</span></li>
+    </ol>
+
+    <h2 id="rounds">Раунды и очки</h2>
+    <div class="tw"><table>
+      <tr><th>Раунд</th><th>Время</th><th>Как считать</th></tr>
+      <tr><td>1. Разминка</td><td>30 с</td><td>Вопросы с вариантами. Верно — 1 балл.</td></tr>
+      <tr><td>2. Картинки</td><td>40 с</td><td>Угадать по фрагменту, размытию или силуэту. Верно — 1 балл.</td></tr>
+      <tr><td>3. Эмодзи</td><td>40 с</td><td>Расшифровать эмодзи. Верно — 1 балл.</td></tr>
+      <tr><td>4. Открытые вопросы</td><td>45 с</td><td>Ответ словами или числом. Верно — 1 балл.</td></tr>
+      <tr><td>5. Ставки</td><td>60 с</td><td>К ответу пишут ставку 1, 2 или 3, каждую не больше двух раз за раунд. Верно — плюс ставка, неверно — минус ставка. В таблицу пишите итог раунда, он может быть отрицательным.</td></tr>
+      <tr><td>6. Чёрный ящик</td><td>30 с на подсказку</td><td>Три загадки по три подсказки. Ответ можно записать после любой подсказки, рядом — её номер. После первой подсказки — 3 балла, после второй — 2, после третьей — 1. Засчитывается первый записанный ответ.</td></tr>
+    </table></div>
+    <h3>Спорные ответы</h3>
+    <p>Решает ведущий. Опечатки и разговорные названия засчитывайте, если понятно, что имелось в виду: «Кристалка» вместо Crystal Maiden — верно. Ответ «наполовину» не засчитывайте: если спрашивали героя и способность, нужны оба.</p>
+
+    <h2 id="tie">Ничья</h2>
+    <p>Если в финале у первых мест поровну очков, вместо победителя появится «Ничья» и кнопка «Перестрелка». Один вопрос, ответ — число, 30 секунд. Ответы пишут на листочке. После ответа нажмите на команду, чья цифра ближе, — на экране объявится победитель.</p>
+
+    <h2 id="deck">Пульт и клавиши</h2>
+    <p>Пульт выезжает снизу, когда двигаете мышью. Слева — где вы в игре, в центре — назад, таймер, вперёд, справа — музыка, очки, полный экран и подсказка по клавишам.</p>
+    <div class="tw"><table>
+      <tr><th>Клавиша</th><th>Что делает</th></tr>
+      <tr><td><kbd>→</kbd> <kbd>Enter</kbd> клик</td><td>Дальше. На разборе — сначала открывает ответ. Клик по левой четверти экрана — назад.</td></tr>
+      <tr><td><kbd>←</kbd></td><td>Назад</td></tr>
+      <tr><td><kbd>Пробел</kbd></td><td>Пауза и продолжение таймера</td></tr>
+      <tr><td><kbd>R</kbd></td><td>Таймер заново</td></tr>
+      <tr><td><kbd>S</kbd></td><td>Таблица очков: названия команд и баллы по раундам</td></tr>
+      <tr><td><kbd>M</kbd></td><td>Музыка вкл/выкл</td></tr>
+      <tr><td><kbd>−</kbd> <kbd>=</kbd></td><td>Тише и громче</td></tr>
+      <tr><td><kbd>F</kbd></td><td>Полный экран</td></tr>
+    </table></div>
+    <p>Кликер для презентаций тоже работает: он нажимает «вперёд» и «назад».</p>
+
+    <h2 id="music">Музыка и звуки</h2>
+    <ul>
+      <li>На входе и в выборе категории играет вступительная песня.</li>
+      <li>Вне раундов — заставка, правила, разбор, таблица, перерыв — играют песни «между раундами», каждый раз новая.</li>
+      <li>От «Старт раунда» до «Сдаём листочки» играет один трек на весь раунд, в следующем раунде — другой.</li>
+      <li>Звуки событий: джингл на старт раунда, сигнал «время вышло», звон на открытие ответа, фанфары победителю. Их громкость меняется вместе с музыкой.</li>
+    </ul>
+    <p>Браузер включает звук только после первого клика — поэтому вход начинается с кнопки «Войти».</p>
+
+    <h2 id="tips">Советы ведущему</h2>
+    <ul>
+      <li>Читайте вопрос вслух целиком, даже если он на экране: так быстрее для всех.</li>
+      <li>Держите темп. Если все сдали ответ раньше времени, листайте дальше — таймер необязательно ждать.</li>
+      <li>На разборе сначала спросите две-три команды, что они написали, и только потом открывайте ответ. Это самая весёлая часть игры.</li>
+      <li>Вносите очки сразу после каждого раунда, а не в конце. Таблица между раундами держит интригу.</li>
+      <li>Перерыв лучше не пропускать: люди успевают выдохнуть и налить.</li>
+    </ul>
+
+    <h2 id="trouble">Если что-то пошло не так</h2>
+    <ul>
+      <li><b>Нет звука.</b> Кликните по экрану или нажмите <kbd>M</kbd>. Проверьте громкость на пульте и на телевизоре.</li>
+      <li><b>Случайно перелистнули.</b> <kbd>←</kbd> — назад. Таймер начнётся заново.</li>
+      <li><b>Закрыли вкладку.</b> Игра начнётся сначала, очки не сохраняются. Перед закрытием браузер переспросит.</li>
+      <li><b>Сайт не открывается.</b> Сайт на Vercel, а Vercel в России иногда блокируют. Откройте локальную копию: файл <code>index.html</code> в папке квиза на ноутбуке.</li>
+      <li><b>Ошибка в вопросе.</b> Отмените вопрос и никому не начисляйте за него балл. Сообщите, что исправить, — поправим к следующей игре.</li>
+    </ul>
+  </main>
+</div>
+</body>
+</html>
