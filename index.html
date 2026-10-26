@@ -234,6 +234,29 @@ td.tot{font-family:var(--f-mono);font-weight:700;color:var(--cs)}
 .card .sb{color:var(--muted);font-size:15px}
 .card .mt{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
 .card .go{margin-top:8px;font-weight:600;color:var(--dota)}
+.tlist{display:grid;gap:10px;width:min(560px,100%)}
+.trow{display:grid;grid-template-columns:2em minmax(0,1fr) 44px;gap:10px;align-items:center}
+.trow .n{font-family:var(--f-display);font-weight:700;color:var(--muted);text-align:right}
+.trow input{background:var(--panel);border:1px solid var(--line);border-radius:10px;color:var(--ink);font:inherit;font-size:clamp(17px,1.6vw,22px);padding:14px 16px;min-width:0;width:100%}
+.trow input:focus{outline:none;border-color:var(--cs)}
+.trow .ib:disabled{opacity:.25;cursor:default}
+.addteam{background:none;border:1px dashed #333a46;border-radius:10px;color:var(--muted);padding:12px 18px;cursor:pointer;font-size:16px;width:min(560px,100%)}
+.addteam:hover{color:var(--ink);border-color:var(--muted)}
+.acts{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+#slide.center .acts{justify-content:center}
+#slide.center .board{width:min(1100px,100%);text-align:left}
+.start.ghost{background:transparent;border:1px solid #333a46;color:var(--ink);animation:none}
+.start.ghost:hover{border-color:var(--muted);filter:none}
+.acts .start{margin-top:0}
+.bigclock{font-family:var(--f-mono);font-weight:700;font-size:clamp(80px,15vw,280px);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.bigclock.low{color:var(--cs)}
+.ans.wait{color:#2a303b}
+.pop{animation:pop .45s cubic-bezier(.2,1.3,.4,1)}
+@keyframes pop{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
+.opt{transition:opacity .3s}
+.opt.dim{opacity:.4}
+.hintlist{margin:0;padding-left:1.2em;display:grid;gap:4px;font-size:clamp(16px,1.6vw,28px);color:var(--muted);line-height:1.35}
+@media (prefers-reduced-motion:reduce){.pop{animation:none}}
 .linkbtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;text-decoration:underline;text-underline-offset:3px;justify-self:center;padding:6px}
 
 @media (max-width:700px){
@@ -262,6 +285,17 @@ td.tot{font-family:var(--f-mono);font-weight:700;color:var(--cs)}
     <h1 class="h2">Выберите категорию</h1>
     <div class="cards" id="cards"></div>
     <p class="small">Новые категории появятся здесь.</p>
+  </div>
+</section>
+
+<section id="teams" class="screen" hidden>
+  <div class="inner">
+    <div class="eyebrow" style="color:var(--cs)">Перед стартом</div>
+    <h1 class="h2">Кто играет?</h1>
+    <p class="lead">Впишите названия команд. Enter добавляет ещё одну. Поменять названия и внести очки можно потом в таблице очков.</p>
+    <div class="tlist" id="tlist"></div>
+    <button class="addteam" id="addT">+ Ещё команда</button>
+    <div class="acts"><button class="start" id="goT">Начать игру</button><button class="start ghost" id="backT">Назад</button></div>
   </div>
 </section>
 
@@ -419,7 +453,10 @@ const DOTA_CS = [
 /* новая категория = ещё один объект с массивом раундов в том же формате */
 const CATEGORIES = [
   {id:"dota-cs2", name:"Дота × КС2", sub:"Dota 2 и Counter-Strike 2: герои, карты, оружие и турниры", rounds:DOTA_CS,
-   pics:["img/pudge.png","img/awp.png"]}
+   pics:["img/pudge.png","img/awp.png"],
+   /* перестрелка при ничьей: ответ — число, побеждает тот, кто ближе */
+   tiebreak:{g:"cs", q:"Сколько стоит в КС2 полный закуп террориста: AK-47, бронежилет со шлемом, молотов, флешка, дымовая и осколочная гранаты?", a:"$4900",
+     note:"AK-47 — $2700, броня со шлемом — $1000, молотов — $400, флешка — $200, дымовая — $300, осколочная — $300."}}
 ];
 
 /* ================= СЛАЙДЫ ================= */
@@ -437,7 +474,8 @@ function useCategory(c){
     slides.push({t:"scores",ri});
     if(r.breakAfter) slides.push({t:"break"});
   });
-  slides.push({t:"end"});
+  /* end shows the winner; on a tie it leads on to the shoot-out (tb → tbans → champ) */
+  slides.push({t:"end"},{t:"tb"},{t:"tbans"},{t:"champ"});
   totalQ=ROUNDS.reduce((s,r)=>s+r.qs.length,0);
 }
 const $=s=>document.querySelector(s);
@@ -446,11 +484,16 @@ const L="АБВГ";
 
 /* ---------- game state ----------
    lives only while the page is open: every visit starts a new game (only the volume is remembered) */
-const state={i:0,cat:null,teams:[{name:"Команда 1",pts:[]},{name:"Команда 2",pts:[]}]};
+const state={i:0,cat:null,reveal:false,tbWinner:null,teams:[{name:"Команда 1",pts:[]},{name:"Команда 2",pts:[]}]};
 function save(){}
-function newGame(){state.i=0;state.teams.forEach(t=>t.pts=[]);for(const k in roundTrack)delete roundTrack[k]}
+function newGame(){state.i=0;state.reveal=false;state.tbWinner=null;state.teams.forEach(t=>t.pts=[]);for(const k in roundTrack)delete roundTrack[k]}
 addEventListener("beforeunload",e=>{if(state.i>0||state.teams.some(t=>t.pts.length)){e.preventDefault();e.returnValue=""}});
 const total=t=>ROUNDS.reduce((s,_,i)=>s+(+t.pts[i]||0),0);
+/* teams sharing first place; a tie needs two or more of them */
+function leaders(){const ts=state.teams;if(!ts.length)return[];const m=Math.max(...ts.map(total));return ts.filter(t=>total(t)===m)}
+const isTie=()=>state.teams.length>1&&leaders().length>1;
+const quote=t=>`«${esc(t.name)}»`;
+const joinNames=ts=>ts.length<3?ts.map(quote).join(" и "):ts.slice(0,-1).map(quote).join(", ")+" и "+quote(ts[ts.length-1]);
 
 /* ---------- media ---------- */
 function mediaHTML(q,reveal){
@@ -514,7 +557,7 @@ function slideHTML(s){
     <h1 class="big">${esc(r.name)}</h1>
     <p class="lead">${esc(r.intro)}</p>
     <div class="meta"><span><b>${r.kind==="box"?r.qs.length+" загадки":r.qs.length+" вопросов"}</b></span><span>Время <b>${r.time} с</b>${r.kind==="box"?" на подсказку":""}</span><span>Очки <b>${esc(r.pts)}</b></span></div>
-    <button class="start" id="bStart">▶ Старт раунда</button>`;
+    <button class="start" data-act="next">▶ Старт раунда</button>`;
   case "q": {
     const n=s.qi+1;
     if(r.kind==="choice") return `
@@ -537,34 +580,64 @@ function slideHTML(s){
     <h1 class="big">Сдаём<br>листочки</h1>
     <p class="lead">Ручки вниз. Ведущий собирает ответы, потом разбираем.</p>`;
   case "ans": {
-    let left="", right="";
+    /* two steps: first the question is recalled and teams call out their answers, the next click opens the answer */
+    const open=state.reveal;
     const tag=`<div class="ans-label">Ответ</div>`;
+    const wait=`<p class="ans wait">?</p><p class="small">Ответ откроется по следующему клику.</p>`;
     if(r.kind==="choice"){
       return `<div class="qrow"><div class="qnum">${s.qi+1}</div><div><p class="recap">${esc(q.q)}</p></div></div>
-        <div class="opts">${q.o.map((o,i)=>`<div class="opt ${i===q.a?"right":""}"><b>${L[i]}</b><span>${esc(o)}</span></div>`).join("")}</div>
-        ${q.note?`<p class="note">${esc(q.note)}</p>`:""}`;
+        <div class="opts">${q.o.map((o,i)=>`<div class="opt ${open&&i===q.a?"right pop":""} ${open&&i!==q.a?"dim":""}"><b>${L[i]}</b><span>${esc(o)}</span></div>`).join("")}</div>
+        ${open?(q.note?`<p class="note">${esc(q.note)}</p>`:""):`<p class="small">Правильный вариант подсветится по следующему клику.</p>`}`;
     }
     const recap = r.kind==="emoji" ? `<div class="emoji" style="font-size:clamp(40px,6vw,110px);text-align:left">${q.e}</div>`
-                : r.kind==="box" ? `<p class="recap">${q.hints.map(esc).join(" · ")}</p>`
+                : r.kind==="box" ? `<ol class="hintlist">${q.hints.map(h=>`<li>${esc(h)}</li>`).join("")}</ol>`
                 : `<p class="recap">${esc(q.q)}</p>`;
-    left=`<div class="qrow"><div class="qnum">${s.qi+1}</div><div>${recap}</div></div>
-      ${tag}<p class="ans">${esc(q.a)}</p>${q.note?`<p class="note">${esc(q.note)}</p>`:""}`;
-    if(q.img){ right=`<div class="media">${mediaHTML(q,true)}</div>`; return `<div class="ansgrid"><div style="display:grid;gap:clamp(12px,2.4vh,30px);min-width:0">${left}</div>${right}</div>`; }
+    const left=`<div class="qrow"><div class="qnum">${s.qi+1}</div><div>${recap}</div></div>
+      ${tag}${open?`<p class="ans pop">${esc(q.a)}</p>${q.note?`<p class="note">${esc(q.note)}</p>`:""}`:wait}`;
+    /* image round shows the cropped picture until the answer opens; the box round keeps its picture hidden until then */
+    const pic=q.img&&(open||r.kind==="image")?`<div class="media">${mediaHTML(q,open)}</div>`:"";
+    if(pic) return `<div class="ansgrid"><div style="display:grid;gap:clamp(12px,2.4vh,30px);min-width:0">${left}</div>${pic}</div>`;
     return left;
   }
-  case "scores": case "end": {
+  case "scores": case "end": case "champ": {
     const ts=[...state.teams].sort((a,b)=>total(b)-total(a));
     const max=Math.max(1,...ts.map(total));
     const rows=ts.length?ts.map((t,i)=>`<div class="brow"><span class="pl">${i+1}</span><span class="nm">${esc(t.name)}</span><span class="bar"><i style="width:${total(t)/max*100}%"></i></span><span class="sc">${total(t)}</span></div>`).join(""):`<p class="empty">Добавьте команды: клавиша S.</p>`;
-    const end=s.t==="end";
-    return `<div class="eyebrow">${end?"Финальный счёт":"После раунда "+(s.ri+1)}</div>
-      <h1 class="h2">${end?(ts[0]?"Побеждает «"+esc(ts[0].name)+"»":"Игра окончена"):"Таблица очков"}</h1>
-      <div class="board">${rows}</div>
-      ${end?"":`<p class="small">Внести очки: клавиша S или кубок на пульте.</p>`}`;
+    const finish=`<div class="acts"><button class="start" data-act="newgame">Новая игра</button><button class="start ghost" data-act="menu">К категориям</button></div>`;
+    if(s.t==="scores") return `<div class="eyebrow">После раунда ${s.ri+1}</div>
+      <h1 class="h2">Таблица очков</h1><div class="board">${rows}</div>
+      <p class="small">Внести очки: клавиша S или кубок на пульте.</p>`;
+    if(s.t==="champ"){
+      const w=state.teams[state.tbWinner];
+      return `<div class="eyebrow">Перестрелка сыграна</div>
+        <h1 class="h2">${w?`Побеждает ${quote(w)}`:"Победитель не выбран"}</h1><div class="board">${rows}</div>${finish}`;
+    }
+    if(isTie()) return `<div class="eyebrow">Финальный счёт</div>
+      <h1 class="h2">Ничья: ${joinNames(leaders())}</h1><div class="board">${rows}</div>
+      <p class="lead">Решает перестрелка: один вопрос, ответ — число. Побеждает тот, кто ближе.</p>
+      <div class="acts"><button class="start" data-act="next">Перестрелка</button></div>`;
+    return `<div class="eyebrow">Финальный счёт</div>
+      <h1 class="h2">${ts[0]?`Побеждает ${quote(ts[0])}`:"Игра окончена"}</h1><div class="board">${rows}</div>${finish}`;
+  }
+  case "tb": {
+    const t=cat.tiebreak;
+    return `<div class="eyebrow">Перестрелка · ${joinNames(leaders())}</div>
+      <div class="qrow"><div class="qnum">!</div><div><p class="qtext">${esc(t.q)}</p></div></div>
+      <div class="meta"><span>Ответ <b>число</b></span><span>Побеждает <b>самый близкий</b></span></div>`;
+  }
+  case "tbans": {
+    const t=cat.tiebreak, ls=leaders();
+    return `<div class="eyebrow">Перестрелка</div>
+      <p class="recap">${esc(t.q)}</p>
+      <div class="ans-label">Ответ</div><p class="ans pop">${esc(t.a)}</p>
+      ${t.note?`<p class="note">${esc(t.note)}</p>`:""}
+      <p class="lead" style="color:var(--ink)">Чей ответ ближе?</p>
+      <div class="acts">${ls.map(w=>{const ti=state.teams.indexOf(w);return `<button class="start ${state.tbWinner===ti?"":"ghost"}" data-act="tbwin" data-ti="${ti}">${quote(w)}</button>`}).join("")}</div>`;
   }
   case "break": return `
     <div class="eyebrow">Половина позади</div>
-    <h1 class="big">Перерыв<br>10 минут</h1>
+    <h1 class="big">Перерыв</h1>
+    <div class="bigclock" id="bigclock">10:00</div>
     <p class="lead">Дальше: обычные вопросы, ставки и чёрный ящик.</p>`;
   }
 }
@@ -612,7 +685,7 @@ P.between.addEventListener("ended",()=>{if(curMode==="between"){cue("between",ne
 function mode(){
   if(!musicOn||!unlocked) return null;
   if(screen!=="quiz") return "menu";
-  return hasTimer(slides[state.i])?"round":"between";
+  return isPlay(slides[state.i])?"round":"between";
 }
 const fades=new Map();
 function fade(a,to,ms,then){
@@ -625,8 +698,9 @@ function syncMusic(){
   const w=mode(), s=slides[state.i];
   if(w==="between"&&curMode!=="between") cue("between",nextTrack("between"));
   if(w==="round"){
-    if(!roundTrack[s.ri]){roundTrack[s.ri]=nextTrack("round");P.round.currentTime=0}
-    cue("round",roundTrack[s.ri]);
+    const key=s.ri!==undefined?s.ri:s.t;
+    if(!roundTrack[key]) roundTrack[key]=nextTrack("round");
+    cue("round",roundTrack[key]);
   }
   curMode=w;
   for(const k in P){
@@ -655,18 +729,27 @@ function paintMusic(){
   const vr=$("#vol"); if(document.activeElement!==vr) vr.value=Math.round(master*100);
   vr.style.setProperty("--p",Math.round(master*100)+"%");
 }
-function hasTimer(s){return s.t==="q"||s.t==="box"}
+/* seconds on the clock for a slide: questions take the round's time, the break 10 minutes, the shoot-out 30 s */
+function slideTime(s){
+  if(s.t==="q"||s.t==="box") return ROUNDS[s.ri].time;
+  if(s.t==="break") return 600;
+  if(s.t==="tb") return 30;
+  return 0;
+}
+function hasTimer(s){return slideTime(s)>0}
+function isPlay(s){return s.t==="q"||s.t==="box"||s.t==="tb"}
 function setupTimer(){
   stopTimer();
-  const s=slides[state.i], r=ROUNDS[s.ri];
+  const s=slides[state.i];
   const clock=$("#clock"), bar=$("#tbar");
-  if(hasTimer(s)){tFull=tLeft=r.time;clock.hidden=false;bar.classList.remove("idle");paintTimer()}
+  if(hasTimer(s)){tFull=tLeft=slideTime(s);clock.hidden=false;bar.classList.remove("idle");paintTimer()}
   else{clock.hidden=true;bar.classList.add("idle")}
 }
 function paintTimer(){
   const c=$("#clock"); if(!c) return;
   c.textContent=`${Math.floor(tLeft/60)}:${String(tLeft%60).padStart(2,"0")}`;
   c.classList.toggle("low",tLeft<=10);
+  const big=$("#bigclock"); if(big){big.textContent=c.textContent;big.classList.toggle("low",tLeft<=60)}
   $("#tbar i").style.transform=`scaleX(${tFull?tLeft/tFull:1})`;
   const timed=hasTimer(slides[state.i]), b=$("#bPlay");
   b.disabled=!timed||tLeft<=0;
@@ -695,22 +778,37 @@ function beep(){
 function musicBtn(){musicOn=!musicOn;curMode=null;syncMusic();paintMusic()}
 
 /* ---------- navigation ---------- */
-function show(){
+function show(keepTimer){
   const s=slides[state.i], q=ROUNDS[s.ri]&&ROUNDS[s.ri].qs[s.qi];
-  document.documentElement.style.setProperty("--accent", q? (q.g==="cs"?"var(--cs)":"var(--dota)") : (s.ri%2?"var(--cs)":"var(--dota)"));
+  document.documentElement.style.setProperty("--accent", q? (q.g==="cs"?"var(--cs)":"var(--dota)") : s.t.startsWith("tb")?"var(--cs)":(s.ri%2?"var(--cs)":"var(--dota)"));
   $("#hud").innerHTML=hud(s);
-  const el=$("#slide"); el.innerHTML=slideHTML(s); el.style.animation="none"; el.offsetHeight; el.style.animation="";
-  el.classList.toggle("center",s.t==="round");
-  const st=$("#bStart"); if(st) st.onclick=e=>{e.stopPropagation();unlock();go(1)};
+  const el=$("#slide"); el.innerHTML=slideHTML(s);
+  if(!keepTimer){el.style.animation="none"; el.offsetHeight; el.style.animation=""}
+  el.classList.toggle("center",["round","end","champ"].includes(s.t));
+  el.querySelectorAll("[data-act]").forEach(b=>b.onclick=e=>{e.stopPropagation();unlock();act(b.dataset)});
   $("#prog").style.width=(state.i/(slides.length-1)*100)+"%";
-  paintDock(s); pixelate(); setupTimer(); syncMusic();
+  paintDock(s); pixelate();
+  if(keepTimer) paintTimer(); else setupTimer();
+  syncMusic();
 }
-/* once a round is started, every next question starts its timer by itself */
+function act(d){
+  if(d.act==="next") go(1);
+  else if(d.act==="tbwin"){state.tbWinner=+d.ti;go(1)}
+  else if(d.act==="newgame"){newGame();setScreen("teams")}
+  else if(d.act==="menu") setScreen("cats");
+}
+/* forward: an answer slide first opens its answer; the final slide moves on only to a shoot-out;
+   once a round is started, every next question starts its timer by itself, and so do the break and the shoot-out */
 function go(d){
-  const prev=slides[state.i], n=Math.max(0,Math.min(slides.length-1,state.i+d));
+  const prev=slides[state.i];
+  if(d>0&&prev.t==="ans"&&!state.reveal){state.reveal=true;show(true);return}
+  if(d>0&&(prev.t==="end"&&!isTie()||prev.t==="tbans"&&state.tbWinner===null||prev.t==="champ")) return;
+  if(d<0&&prev.t==="champ"){state.i=slides.findIndex(x=>x.t==="tbans");state.reveal=true;show();return}
+  const n=Math.max(0,Math.min(slides.length-1,state.i+d));
   if(n===state.i) return;
-  state.i=n; show();
-  if(d>0&&hasTimer(slides[n])&&["round","q","box"].includes(prev.t)) startTimer();
+  state.i=n; state.reveal=d<0; show();
+  const s=slides[n];
+  if(d>0&&hasTimer(s)&&(["round","q","box"].includes(prev.t)||s.t==="break"||s.t==="tb")) startTimer();
 }
 
 /* ---------- scores editor ---------- */
@@ -760,6 +858,7 @@ document.addEventListener("keydown",e=>{
   const k=e.key;
   if(screen!=="quiz"){
     if(screen==="intro"&&(k==="Enter"||k===" ")){e.preventDefault();setScreen("cats")}
+    else if(screen==="teams"&&k==="Enter"){e.preventDefault();$("#goT").click()}
     else if(k==="m"||k==="M"||k==="ь"||k==="Ь") musicBtn();
     else if(k==="-"||k==="_") volume(-.25);
     else if(k==="="||k==="+") volume(.25);
@@ -785,15 +884,17 @@ $("#dock").addEventListener("mouseup",e=>{const b=e.target.closest("button");if(
 function paintDock(s){
   const r=ROUNDS[s.ri];
   $("#dWhere").textContent=r?`Раунд ${s.ri+1}: ${r.name}`:cat.name;
-  const step={title:"Заставка",rules:"Правила",round:"Заставка раунда",q:"Вопрос",box:"Загадка",collect:"Сдаём листочки",ans:"Ответ",scores:"Таблица очков",break:"Перерыв",end:"Финал"}[s.t];
-  $("#dStep").textContent=(s.t==="q"||s.t==="box"||s.t==="ans")?`${step} ${s.qi+1} из ${r.qs.length}`:step;
-  $("#dSegs").innerHTML=ROUNDS.map((_,i)=>`<i class="${s.ri===undefined?(s.t==="end"?"done":""):i<s.ri?"done":i===s.ri?"now":""}"></i>`).join("");
+  const step={title:"Заставка",rules:"Правила",round:"Заставка раунда",q:"Вопрос",box:"Загадка",collect:"Сдаём листочки",ans:"Ответ",scores:"Таблица очков",break:"Перерыв",end:"Финал",tb:"Перестрелка",tbans:"Ответ перестрелки",champ:"Победитель"}[s.t];
+  $("#dStep").textContent=(s.t==="q"||s.t==="box"||s.t==="ans")?`${step} ${s.qi+1} из ${r.qs.length}${s.t==="ans"&&!state.reveal?" · ответ закрыт":""}`:step;
+  const over=["end","tb","tbans","champ"].includes(s.t);
+  $("#dSegs").innerHTML=ROUNDS.map((_,i)=>`<i class="${s.ri===undefined?(over?"done":""):i<s.ri?"done":i===s.ri?"now":""}"></i>`).join("");
 }
 
 /* ---------- screens: entry → categories → quiz ---------- */
 function setScreen(s){
   screen=s;
-  $("#intro").hidden=s!=="intro"; $("#cats").hidden=s!=="cats";
+  $("#intro").hidden=s!=="intro"; $("#cats").hidden=s!=="cats"; $("#teams").hidden=s!=="teams";
+  if(s==="teams") paintTeams();
   $("#stage").hidden=s!=="quiz"; $("#dock").hidden=s!=="quiz";
   if(s!=="quiz") stopTimer();
   if(s==="cats") paintCats();
@@ -819,9 +920,30 @@ function paintCats(){
 }
 function openCategory(ci,restart){
   const c=CATEGORIES[ci];
-  if(restart||state.cat!==c.id) newGame();
-  state.cat=c.id; useCategory(c); setScreen("quiz");
+  const going=!restart&&state.cat===c.id&&state.i>0;
+  state.cat=c.id; useCategory(c);
+  if(going){setScreen("quiz");return}
+  newGame(); setScreen("teams");
 }
+/* team names before the game; points live in the score table (S) */
+function paintTeams(){
+  $("#tlist").innerHTML=state.teams.map((t,ti)=>`<div class="trow">
+    <span class="n">${ti+1}</span>
+    <input type="text" id="team${ti}" data-ti="${ti}" value="${esc(t.name)}" placeholder="Название команды" maxlength="40" autocomplete="off">
+    <button class="ib" data-del="${ti}" aria-label="Убрать команду" title="Убрать команду" ${state.teams.length<=1?"disabled":""}><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+  </div>`).join("");
+  $("#addT").hidden=state.teams.length>=12;
+}
+$("#tlist").addEventListener("input",e=>{const t=state.teams[e.target.dataset.ti];if(t)t.name=e.target.value});
+$("#tlist").addEventListener("click",e=>{const b=e.target.closest("[data-del]");if(b&&state.teams.length>1){state.teams.splice(+b.dataset.del,1);paintTeams()}});
+$("#tlist").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addTeam()}});
+function addTeam(){state.teams.push({name:"",pts:[]});paintTeams();$("#team"+(state.teams.length-1)).focus()}
+$("#addT").onclick=addTeam;
+$("#goT").onclick=()=>{
+  state.teams=state.teams.map((t,i)=>({...t,name:t.name.trim()||"Команда "+(i+1)}));
+  setScreen("quiz");
+};
+$("#backT").onclick=()=>setScreen("cats");
 $("#cards").addEventListener("click",e=>{
   const r=e.target.closest("[data-restart]"); if(r){openCategory(+r.dataset.restart,true);return}
   const c=e.target.closest("[data-ci]"); if(c) openCategory(+c.dataset.ci,false);
