@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="theme-color" content="#0e1014">
+<title>Квиз у двух яиц</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cellipse cx='22' cy='36' rx='14' ry='18' fill='%23efe4cf'/%3E%3Cellipse cx='44' cy='36' rx='14' ry='18' fill='%23e3a63b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;900&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one full-screen stage for a TV, HUD strip on top (round · question · game), round-timer bar at the bottom like a match HUD. Single dark look on purpose: it is a game-night screen. */
+:root{
+  color-scheme: dark;
+  --bg:#0e1014;
+  --panel:#161a21;
+  --line:#262c36;
+  --ink:#ece6da;
+  --muted:#8d929c;
+  --dota:#d2452c;      /* Dire red */
+  --cs:#e3a63b;        /* T-side ochre */
+  --ct:#6b9be0;        /* CT blue, used for answers */
+  --good:#5fbf7a;
+  --accent:var(--dota);
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"Golos Text","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-body);overflow:hidden}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--ct);outline-offset:3px}
+
+/* ---------- stage ---------- */
+#stage{position:relative;height:100%;display:grid;grid-template-rows:auto 1fr auto;
+  padding-block:clamp(12px,2.2vh,28px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:
+    radial-gradient(120vmax 70vmax at 50% 120%, color-mix(in srgb,var(--accent) 22%,transparent), transparent 60%),
+    var(--bg);
+  transition:background .6s}
+#stage::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.07;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.hud{display:flex;align-items:center;gap:clamp(8px,1.5vw,24px);font-family:var(--f-mono);font-size:clamp(12px,1.25vw,22px);color:var(--muted);letter-spacing:.06em;text-transform:uppercase;min-height:2em;position:relative;z-index:1}
+.hud .round{color:var(--ink)}
+.chip{padding:.25em .7em;border:1px solid currentColor;border-radius:3px;font-weight:700}
+.chip.dota{color:var(--dota)} .chip.cs{color:var(--cs)}
+.hud .spacer{flex:1}
+.clock{font-size:clamp(20px,2.6vw,48px);font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;letter-spacing:0}
+.clock.low{color:var(--dota)}
+.clock[hidden]{display:none}
+
+#slide{position:relative;z-index:1;display:flex;flex-direction:column;justify-content:center;gap:clamp(14px,3vh,40px);min-height:0;max-width:1500px;width:100%;margin-inline:auto;animation:in .35s ease-out}
+@keyframes in{from{opacity:.0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#slide{animation:none}}
+
+.eyebrow{font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.14em;color:var(--accent);font-size:clamp(13px,1.3vw,24px);font-weight:700}
+.big{font-family:var(--f-display);font-weight:900;line-height:1;text-wrap:balance;font-size:clamp(40px,8vw,150px);margin:0;letter-spacing:-.01em}
+.h2{font-family:var(--f-display);font-weight:700;line-height:1.12;text-wrap:balance;font-size:clamp(24px,3.6vw,64px);margin:0}
+.lead{font-size:clamp(17px,1.9vw,34px);line-height:1.4;color:var(--muted);max-width:52ch;margin:0}
+.qnum{font-family:var(--f-display);font-weight:900;color:var(--accent);font-size:clamp(40px,6vw,110px);line-height:.9}
+.qtext{font-family:var(--f-body);font-weight:600;font-size:clamp(24px,3.4vw,62px);line-height:1.2;text-wrap:balance;margin:0;max-width:30ch}
+.qrow{display:grid;grid-template-columns:auto 1fr;gap:clamp(14px,2.5vw,48px);align-items:start}
+.qrow > div{min-width:0}
+
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:clamp(10px,1.5vw,24px);margin-top:clamp(8px,2vh,30px)}
+.opt{display:flex;gap:.7em;align-items:baseline;padding:clamp(12px,1.6vw,26px) clamp(14px,1.8vw,30px);background:var(--panel);border:1px solid var(--line);border-radius:6px;font-size:clamp(18px,2.3vw,42px);font-weight:500;min-width:0}
+.opt b{font-family:var(--f-mono);color:var(--accent);font-weight:700}
+.opt.right{border-color:var(--good);background:color-mix(in srgb,var(--good) 16%,var(--panel))}
+.opt.right b{color:var(--good)}
+
+.media{display:flex;justify-content:center;align-items:center;min-height:0;flex:1}
+.zoom{width:min(78vw,128vh);aspect-ratio:16/9;max-width:100%;border-radius:6px;border:1px solid var(--line);background-repeat:no-repeat;box-shadow:0 30px 80px #0008}
+.icon{width:min(40vh,40vw);max-width:100%;aspect-ratio:1;object-fit:contain;border-radius:6px;box-shadow:0 30px 80px #0008}
+canvas.pix{width:min(60vw,58vh);aspect-ratio:88/64;max-width:100%;image-rendering:pixelated;border-radius:6px;box-shadow:0 30px 80px #0008}
+.sil{width:min(70vw,60vh);max-width:100%;aspect-ratio:4/3;object-fit:contain;filter:brightness(0) invert(.9) drop-shadow(0 0 30px color-mix(in srgb,var(--accent) 60%,transparent))}
+.sil.off{filter:drop-shadow(0 20px 40px #000a)}
+.emoji{white-space:nowrap;font-size:clamp(56px,min(11vw,22vh),220px);line-height:1.1;text-align:center;letter-spacing:.08em;font-family:"Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",sans-serif}
+
+.ans-label{font-family:var(--f-mono);text-transform:uppercase;letter-spacing:.14em;color:var(--ct);font-size:clamp(13px,1.3vw,24px);font-weight:700}
+.ans{font-family:var(--f-display);font-weight:900;font-size:clamp(34px,6vw,118px);line-height:1.02;color:var(--ink);text-wrap:balance;margin:0}
+.note{font-size:clamp(16px,1.7vw,30px);line-height:1.4;color:var(--muted);max-width:60ch;margin:0}
+.recap{font-size:clamp(16px,1.7vw,30px);color:var(--muted);margin:0;max-width:60ch}
+.ansgrid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:clamp(16px,3vw,60px);align-items:center}
+.ansgrid .media{flex:none}
+.ansgrid .zoom{width:100%}
+.ansgrid .sil,.ansgrid .icon,.ansgrid canvas.pix{width:100%;max-height:50vh}
+
+.rules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:clamp(12px,2vw,32px) clamp(20px,4vw,70px);margin:0;padding:0;list-style:none;counter-reset:r}
+.rules li{display:grid;grid-template-columns:auto 1fr;gap:.8em;font-size:clamp(16px,1.8vw,32px);line-height:1.35;min-width:0}
+.rules li::before{counter-increment:r;content:counter(r);font-family:var(--f-mono);font-weight:700;color:var(--accent)}
+.rules strong{color:var(--ink)}
+.rules span{color:var(--muted)}
+
+.meta{display:flex;flex-wrap:wrap;gap:clamp(10px,2vw,40px);font-family:var(--f-mono);font-size:clamp(14px,1.5vw,26px);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.meta b{color:var(--ink);font-weight:700}
+
+.hints{display:grid;gap:clamp(10px,1.6vh,22px);margin:0;padding:0;list-style:none}
+.hints li{display:grid;grid-template-columns:auto 1fr;gap:1em;align-items:baseline;padding:clamp(12px,1.6vw,26px) clamp(14px,1.8vw,30px);background:var(--panel);border:1px solid var(--line);border-radius:6px;font-size:clamp(20px,2.5vw,46px);line-height:1.25}
+.hints li b{font-family:var(--f-mono);color:var(--accent);font-size:.7em;white-space:nowrap}
+.hints li.new{border-color:var(--accent);animation:in .4s ease-out}
+
+.board{display:grid;gap:clamp(8px,1.3vh,16px)}
+.brow{display:grid;grid-template-columns:2.2em minmax(0,14em) 1fr 3.2em;gap:clamp(10px,1.5vw,24px);align-items:center;font-size:clamp(18px,2.2vw,40px)}
+.brow .pl{font-family:var(--f-mono);color:var(--muted);font-weight:700}
+.brow .nm{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.brow .bar{height:.7em;background:var(--line);border-radius:2px;overflow:hidden}
+.brow .bar i{display:block;height:100%;background:var(--accent);transition:width .8s ease-out}
+.brow .sc{font-family:var(--f-mono);font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.brow:first-child .nm,.brow:first-child .sc{color:var(--cs)}
+.empty{color:var(--muted);font-size:clamp(16px,1.8vw,30px)}
+
+/* round intro: centered, with the big start button */
+#slide.center{align-items:center;text-align:center}
+#slide.center .lead{margin-inline:auto}
+#slide.center .meta{justify-content:center}
+.start{margin-top:clamp(10px,3vh,40px);font-family:var(--f-display);font-weight:700;font-size:clamp(20px,2.4vw,44px);padding:.75em 1.7em;border:none;border-radius:999px;background:var(--accent);color:#fff;cursor:pointer;animation:pulse 2.2s ease-out infinite}
+.start:hover{filter:brightness(1.1)}
+@keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent)}100%{box-shadow:0 0 0 28px transparent}}
+.tstart{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);font-family:var(--f-display);font-weight:700;font-size:clamp(14px,1.3vw,22px);padding:.6em 1.4em;border:1px solid var(--accent);border-radius:999px;background:var(--panel);color:var(--ink);cursor:pointer;z-index:2}
+.tstart:hover{background:var(--accent);color:#fff}
+@media (prefers-reduced-motion:reduce){.start{animation:none}}
+
+/* timer bar */
+.foot{position:relative;z-index:1;display:grid;gap:10px}
+.tbar{height:8px;background:var(--line);border-radius:2px;overflow:hidden}
+.tbar i{display:block;height:100%;width:100%;background:var(--accent);transform-origin:left;transition:transform .25s linear}
+.tbar.idle{opacity:.0}
+.prog{height:2px;background:var(--line)}
+.prog i{display:block;height:100%;background:var(--muted);transition:width .3s}
+
+/* control bar: shows on mouse move */
+.ctl{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line);border-radius:8px;z-index:5;opacity:0;transition:opacity .3s;max-width:calc(100% - 32px);flex-wrap:wrap;justify-content:center}
+body.mouse .ctl{opacity:1}
+.ctl button{background:transparent;border:1px solid transparent;border-radius:5px;padding:.45em .8em;font-size:14px;cursor:pointer;white-space:nowrap}
+.ctl button:hover{background:var(--line)}
+.ctl button.on{border-color:var(--good);color:var(--good)}
+.ctl kbd{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-left:.4em}
+
+/* overlay: score editor */
+.ov{position:fixed;inset:0;background:#000b;z-index:10;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
+.ov[hidden]{display:none!important}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:clamp(16px,2vw,32px);width:min(1100px,100%);max-height:90vh;overflow:auto;display:grid;gap:18px}
+.sheet h3{font-family:var(--f-display);margin:0;font-size:clamp(20px,2vw,32px)}
+.tblwrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:16px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+th{font-family:var(--f-mono);font-weight:500;color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+td:first-child,th:first-child{text-align:left}
+td input{background:var(--bg);border:1px solid var(--line);border-radius:4px;color:var(--ink);font:inherit;padding:6px 8px}
+td input[type=number]{width:4.2em;text-align:center;font-family:var(--f-mono)}
+td input[type=text]{width:12em}
+td.tot{font-family:var(--f-mono);font-weight:700;color:var(--cs)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.btn{background:var(--line);border:1px solid var(--line);border-radius:6px;padding:.6em 1em;cursor:pointer;font-size:15px}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.ghost{background:transparent}
+.del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px}
+.small{color:var(--muted);font-size:14px;line-height:1.4;margin:0}
+.keys{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:15px}
+.keys kbd{font-family:var(--f-mono);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:1px 7px;text-align:center}
+
+/* ---------- entry and category screens ---------- */
+.screen{height:100%;overflow-y:auto;display:flex;flex-direction:column;
+  padding-block:clamp(24px,5vh,60px);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:radial-gradient(110vmax 70vmax at 50% 118%, color-mix(in srgb,var(--dota) 20%,transparent), transparent 60%),var(--bg)}
+.screen .inner{margin:auto;width:100%;max-width:1100px;display:flex;flex-direction:column;align-items:center;gap:clamp(16px,3.2vh,34px);text-align:center}
+.title{font-family:var(--f-display);font-weight:900;font-size:clamp(34px,min(10vw,12vh),150px);line-height:.95;letter-spacing:-.02em;margin:0;text-wrap:balance}
+.title em{font-style:normal;color:var(--cs)}
+.screen .lead{margin-inline:auto}
+.eggs{display:flex;gap:clamp(10px,2vw,28px);justify-content:center}
+.egg{width:clamp(52px,7.5vw,124px);aspect-ratio:3/4;border-radius:50% 50% 50% 50% / 62% 62% 38% 38%;
+  background:radial-gradient(60% 50% at 38% 28%,#fffaf0,#efe4cf 55%,#c9b897);
+  animation:wob 3.4s ease-in-out infinite;transform-origin:50% 92%}
+.e1{box-shadow:inset -8px -10px 18px #0003,-14px 4px 44px color-mix(in srgb,var(--dota) 50%,transparent),0 18px 40px #0008}
+.e2{animation-delay:-1.7s;box-shadow:inset -8px -10px 18px #0003,14px 4px 44px color-mix(in srgb,var(--cs) 50%,transparent),0 18px 40px #0008}
+@keyframes wob{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg)}}
+@media (prefers-reduced-motion:reduce){.egg{animation:none}}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),380px));justify-content:center;gap:20px;width:100%}
+.cardwrap{display:grid;gap:8px;min-width:0}
+.card{display:grid;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;padding:0;transition:transform .2s,border-color .2s}
+.card:hover{transform:translateY(-3px);border-color:var(--dota)}
+.card .pic{aspect-ratio:2/1;display:grid;grid-template-columns:1fr 1fr;background:#0b0d10}
+.card .pic span{background-size:cover;background-position:center;background-repeat:no-repeat}
+.card .pic span+span{background-size:90%}
+.card .body{display:grid;gap:6px;padding:16px 18px 18px;min-width:0}
+.card .nm{font-family:var(--f-display);font-weight:700;font-size:clamp(20px,2vw,26px)}
+.card .sb{color:var(--muted);font-size:15px}
+.card .mt{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.card .go{margin-top:8px;font-weight:600;color:var(--dota)}
+.linkbtn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;text-decoration:underline;text-underline-offset:3px;justify-self:center;padding:6px}
+
+@media (max-width:700px){
+  .opts,.rules,.ansgrid{grid-template-columns:1fr}
+  .qrow{grid-template-columns:1fr}
+  .brow{grid-template-columns:1.6em minmax(0,1fr) 3em}
+  .brow .bar{display:none}
+}
+</style>
+</head>
+<body>
+
+<section id="intro" class="screen">
+  <div class="inner">
+    <div class="eggs" aria-hidden="true"><span class="egg e1"></span><span class="egg e2"></span></div>
+    <h1 class="title">Квиз<br>у&nbsp;двух <em>яиц</em></h1>
+    <p class="lead">Домашняя игра в формате Квиз Плиз. Команды, листочки и ведущий у экрана.</p>
+    <button class="start" id="bEnter">Войти</button>
+    <p class="small">Со звуком: после входа заиграет музыка.</p>
+  </div>
+</section>
+
+<section id="cats" class="screen" hidden>
+  <div class="inner">
+    <div class="eyebrow" style="color:var(--cs)">Квиз у двух яиц</div>
+    <h1 class="h2">Выберите категорию</h1>
+    <div class="cards" id="cards"></div>
+    <p class="small">Новые категории появятся здесь.</p>
+  </div>
+</section>
+
+<div id="stage" hidden>
+  <div class="hud" id="hud"></div>
+  <div id="slide"></div>
+  <div class="foot">
+    <button class="tstart" id="bTstart" hidden>▶ Старт</button>
+    <div class="tbar idle" id="tbar"><i></i></div>
+    <div class="prog"><i id="prog"></i></div>
+  </div>
+</div>
+
+<div class="ctl" id="ctl" hidden>
+  <button id="bMenu">Меню</button>
+  <button id="bPrev" title="Назад">◀<kbd>←</kbd></button>
+  <button id="bTimer">Таймер<kbd>Пробел</kbd></button>
+  <button id="bNext" title="Дальше">▶<kbd>→</kbd></button>
+  <button id="bMusic">Музыка<kbd>M</kbd></button>
+  <button id="bScores">Очки<kbd>S</kbd></button>
+  <button id="bFull">Экран<kbd>F</kbd></button>
+  <button id="bHelp">?</button>
+</div>
+
+<div class="ov" id="ovScores" hidden>
+  <div class="sheet">
+    <h3>Очки команд</h3>
+    <div class="tblwrap"><table id="scoreTbl"></table></div>
+    <div class="row">
+      <button class="btn" id="addTeam">+ Команда</button>
+      <span style="flex:1"></span>
+      <button class="btn ghost" id="resetAll">Новая игра</button>
+      <button class="btn pri" id="closeScores">Готово</button>
+    </div>
+    <p class="small" id="resetNote" hidden>Нажми «Новая игра» ещё раз: очки обнулятся, названия команд останутся.</p>
+  </div>
+</div>
+
+<div class="ov" id="ovHelp" hidden>
+  <div class="sheet" style="width:min(560px,100%)">
+    <h3>Управление</h3>
+    <div class="keys">
+      <kbd>→</kbd><span>следующий слайд (или клик по экрану, кликер PageDown)</span>
+      <kbd>←</kbd><span>назад</span>
+      <kbd>Пробел</kbd><span>пауза / продолжить таймер (на вопросах он стартует сам после «Старт раунда»)</span>
+      <kbd>R</kbd><span>сбросить таймер</span>
+      <kbd>M</kbd><span>музыка вкл/выкл</span>
+      <kbd>− / =</kbd><span>тише / громче</span>
+      <kbd>S</kbd><span>таблица очков</span>
+      <kbd>F</kbd><span>полный экран</span>
+      <kbd>Home</kbd><span>в начало категории</span>
+    </div>
+    <div class="row"><span style="flex:1"></span><button class="btn pri" id="closeHelp">Понятно</button></div>
+  </div>
+</div>
+
+<script>
+/* ================= ВОПРОСЫ ================= */
+const DOTA_CS = [
+{
+  name:"Разминка", kind:"choice", time:30, pts:"1 балл",
+  intro:"Семь вопросов с вариантами. Пишем букву или сам ответ.",
+  qs:[
+    {g:"dota", q:"Как называются две стороны в Dota 2?", o:["Свет и Тьма","Radiant и Dire","Альянс и Орда","Sentinel и Scourge"], a:1,
+     note:"Sentinel и Scourge — стороны в первой DotA на движке Warcraft III."},
+    {g:"cs", q:"Сколько раундов нужно выиграть, чтобы взять карту в CS2 (формат MR12)?", o:["12","13","15","16"], a:1,
+     note:"В CS2 играют до 13 побед из 24 раундов. В CS:GO было до 16 (MR15)."},
+    {g:"dota", q:"Какая команда выиграла самый первый The International в 2011 году?", o:["Natus Vincere","Team Spirit","EHOME","OG"], a:0,
+     note:"Na'Vi забрали миллион долларов на первом TI в Кёльне."},
+    {g:"cs", q:"Сколько секунд тикает заложенная бомба в соревновательном CS2?", o:["35","40","45","60"], a:1},
+    {g:"dota", q:"Какой предмет даёт герою вторую жизнь?", o:["Black King Bar","Blink Dagger","Aegis of the Immortal","Divine Rapier"], a:2},
+    {g:"cs", q:"Сколько стоит набор сапёра (defuse kit) в CS2?", o:["$200","$400","$500","$650"], a:1,
+     note:"С ним бомба разминируется за 5 секунд вместо 10."},
+    {g:"dota", q:"Какая команда первой выиграла The International два раза подряд?", o:["Team Spirit","Team Liquid","OG","Evil Geniuses"], a:2,
+     note:"OG взяли TI8 (2018) и TI9 (2019)."}
+  ]
+},
+{
+  name:"Картинки", kind:"image", time:40, pts:"1 балл",
+  intro:"Узнайте героя, способность, предмет или оружие по фрагменту.",
+  qs:[
+    {g:"dota", q:"Чья это рука?", img:"img/pudge.png", fx:{k:"zoom",x:88,y:15,s:2.3}, a:"Pudge", note:"Тот самый крюк."},
+    {g:"dota", q:"Чей это камень на лбу?", img:"img/crystal_maiden.png", fx:{k:"zoom",x:50,y:0,s:3}, a:"Crystal Maiden", note:"В народе — Кристалка или ЦМ."},
+    {g:"dota", q:"Чья это ультимативная способность?", img:"img/enigma_black_hole.png", fx:{k:"icon"}, a:"Enigma — Black Hole"},
+    {g:"dota", q:"Чья это ультимативная способность?", img:"img/tidehunter_ravage.png", fx:{k:"icon"}, a:"Tidehunter — Ravage"},
+    {g:"dota", q:"Какой это предмет?", img:"img/blink.png", fx:{k:"pixel",b:5}, a:"Blink Dagger", note:"Телепорт на короткую дистанцию. Его нельзя прожать, если герой недавно получил урон."},
+    {g:"cs", q:"Что это за оружие?", img:"img/negev.png", fx:{k:"sil"}, a:"Negev", note:"Пулемёт за $1700. Чем дольше стреляешь, тем точнее."},
+    {g:"cs", q:"Что это за оружие?", img:"img/zeus.png", fx:{k:"sil"}, a:"Zeus x27", note:"Электрошокер на один выстрел, $200."}
+  ]
+},
+{
+  name:"Эмодзи-шарады", kind:"emoji", time:40, pts:"1 балл", breakAfter:true,
+  intro:"Расшифруйте эмодзи. Это герой, карта или фраза из игры — подсказка в углу.",
+  qs:[
+    {g:"dota", e:"🧙‍♂️ 🔥 ❄️ ⚡", hint:"Герой", a:"Invoker", note:"Огонь, лёд и молния — сферы Exort, Quas и Wex."},
+    {g:"cs", e:"🏜️ 2️⃣", hint:"Карта", a:"Dust II"},
+    {g:"dota", e:"🐒 👑", hint:"Герой", a:"Monkey King"},
+    {g:"cs", e:"🏗️ 😵‍💫", hint:"Карта", a:"Vertigo", note:"Vertigo — головокружение. Карта на крыше недостроенного небоскрёба."},
+    {g:"dota", e:"🐉 🛡️ ⚔️", hint:"Герой", a:"Dragon Knight"},
+    {g:"dota", e:"💣 💣 💣 🤪", hint:"Герой", a:"Techies"},
+    {g:"cs", e:"💣 ➡️ 🌱", hint:"Фраза", a:"«The bomb has been planted»", note:"Planted — заложена, а дословно «посажена»."}
+  ]
+},
+{
+  name:"Дота против КС", kind:"open", time:45, pts:"1 балл",
+  intro:"Обычные вопросы без вариантов. Пишем ответ словами или числом.",
+  qs:[
+    {g:"dota", q:"В каком году вышел официальный релиз Dota 2?", a:"2013", note:"9 июля 2013 года."},
+    {g:"cs", q:"Какое максимальное количество денег может быть у игрока в соревновательном CS2?", a:"$16 000"},
+    {g:"dota", q:"Сколько слотов в основном инвентаре героя (без рюкзака, нейтрального слота и телепорта)?", a:"6"},
+    {g:"cs", q:"Какую фразу кричит персонаж, когда бросает осколочную гранату?", a:"«Fire in the hole!»"},
+    {g:"dota", q:"Какое здание нужно уничтожить на базе соперника, чтобы победить?", a:"Древний (Ancient), он же трон"},
+    {g:"cs", q:"За какую команду играл s1mple, когда выиграл свой первый мейджор (PGL Stockholm 2021)?", a:"Natus Vincere", note:"Na'Vi прошли тот мейджор, не проиграв ни одной карты."},
+    {g:"dota", q:"Какая команда выиграла TI10 в 2021 году с рекордным призовым фондом около $40 млн?", a:"Team Spirit", note:"Spirit выиграли ещё и TI 2023."}
+  ]
+},
+{
+  name:"Ставки", kind:"bet", time:60, pts:"ставка 1–3",
+  intro:"Рядом с ответом пишем ставку: 1, 2 или 3. Каждую ставку можно использовать два раза за раунд. Верно — плюс ставка, ошибка — минус ставка.",
+  qs:[
+    {g:"dota", q:"Как расшифровывается жанр MOBA?", a:"Multiplayer Online Battle Arena"},
+    {g:"cs", q:"Что означает приставка de_ в названиях карт вроде de_dust2?", a:"Defuse — разминирование", note:"Карты с cs_ — режим спасения заложников."},
+    {g:"dota", q:"Под каким ником известен разработчик DotA Allstars, который потом делал Dota 2 в Valve?", a:"IceFrog"},
+    {g:"cs", q:"Какая команда выиграла первый мейджор по CS:GO в Катовице в 2014 году?", a:"Virtus.pro"},
+    {g:"dota", q:"Какой максимальный уровень героя в Dota 2?", a:"30"},
+    {g:"cs", q:"Как называется режим CS2, где команды играют 2 на 2 на маленьких картах?", a:"Wingman (Напарники)"}
+  ]
+},
+{
+  name:"Чёрный ящик", kind:"box", time:30, pts:"3 / 2 / 1",
+  intro:"Три загадки по три подсказки. Ответ можно написать после любой подсказки: после первой — 3 балла, после второй — 2, после третьей — 1. Рядом с ответом пишем номер подсказки.",
+  qs:[
+    {g:"dota", hints:["Я нейтрал, но меня боятся обе стороны.","Каждый раз, когда меня убивают, я возвращаюсь сильнее.","После моей смерти остаётся Аегис."], a:"Рошан"},
+    {g:"cs", hints:["Я одна из самых дорогих покупок в CS2 и убиваю с одного выстрела.","За убийство мной дают всего $100 — втрое меньше, чем за обычную винтовку.","В русском комьюнити меня зовут «слон» или «авик»."], a:"AWP", img:"img/awp.png"},
+    {g:"cs", hints:["Я живу на нескольких картах CS, но в матче не участвую.","Меня можно убить, но денег за это не дадут.","Ко-ко-ко."], a:"Курица"}
+  ]
+}
+];
+
+/* ================= КАТЕГОРИИ ================= */
+/* новая категория = ещё один объект с массивом раундов в том же формате */
+const CATEGORIES = [
+  {id:"dota-cs2", name:"Дота × КС2", sub:"Dota 2 и Counter-Strike 2: герои, карты, пушки и турниры", rounds:DOTA_CS,
+   pics:["img/pudge.png","img/awp.png"]}
+];
+
+/* ================= СЛАЙДЫ ================= */
+let ROUNDS=[], slides=[], totalQ=0, cat=null;
+function useCategory(c){
+  cat=c; ROUNDS=c.rounds; slides=[{t:"title"},{t:"rules"}];
+  ROUNDS.forEach((r,ri)=>{
+    slides.push({t:"round",ri});
+    r.qs.forEach((q,qi)=>{
+      if(r.kind==="box") q.hints.forEach((_,h)=>slides.push({t:"box",ri,qi,h}));
+      else slides.push({t:"q",ri,qi});
+    });
+    slides.push({t:"collect",ri});
+    r.qs.forEach((q,qi)=>slides.push({t:"ans",ri,qi}));
+    slides.push({t:"scores",ri});
+    if(r.breakAfter) slides.push({t:"break"});
+  });
+  slides.push({t:"end"});
+  totalQ=ROUNDS.reduce((s,r)=>s+r.qs.length,0);
+}
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const L="АБВГ";
+
+/* ---------- storage ---------- */
+const KEY="kviz-dota-cs2";
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
+const state=Object.assign({i:0,teams:[{name:"Команда 1",pts:[]},{name:"Команда 2",pts:[]}]},load());
+const total=t=>ROUNDS.reduce((s,_,i)=>s+(+t.pts[i]||0),0);
+
+/* ---------- media ---------- */
+function mediaHTML(q,reveal){
+  const fx=q.fx||{};
+  if(fx.k==="zoom"){
+    if(reveal) return `<div class="zoom" style="background-image:url('${q.img}');background-size:cover;background-position:center"></div>`;
+    return `<div class="zoom" style="background-image:url('${q.img}');background-size:${fx.s*100}%;background-position:${fx.x}% ${fx.y}%"></div>`;
+  }
+  if(fx.k==="icon") return `<img class="icon" src="${q.img}" alt="">`;
+  if(fx.k==="pixel") return reveal?`<img class="icon" style="aspect-ratio:88/64" src="${q.img}" alt="">`:`<canvas class="pix" data-src="${q.img}" data-b="${fx.b}"></canvas>`;
+  if(fx.k==="sil") return `<img class="sil ${reveal?"off":""}" src="${q.img}" alt="">`;
+  if(q.img) return `<img class="sil off" src="${q.img}" alt="">`;
+  return "";
+}
+function pixelate(){
+  document.querySelectorAll("canvas.pix").forEach(c=>{
+    const im=new Image();
+    im.onload=()=>{
+      const b=+c.dataset.b, w=Math.ceil(im.width/b), h=Math.ceil(im.height/b);
+      c.width=w;c.height=h;
+      const x=c.getContext("2d");x.imageSmoothingEnabled=true;x.drawImage(im,0,0,w,h);
+    };
+    im.src=c.dataset.src;
+  });
+}
+
+/* ---------- render ---------- */
+function qNumber(ri,qi){let n=0;for(let i=0;i<ri;i++)n+=ROUNDS[i].qs.length;return n+qi+1}
+function hud(s){
+  const r=ROUNDS[s.ri];
+  let h="";
+  if(r){
+    h+=`<span class="round">Раунд ${s.ri+1} · ${esc(r.name)}</span>`;
+    if(s.t==="q"||s.t==="box") h+=`<span>Вопрос ${s.qi+1} / ${r.qs.length}</span>`;
+    if(s.t==="ans") h+=`<span>Ответ ${s.qi+1} / ${r.qs.length}</span>`;
+    const q=r.qs[s.qi];
+    if(q&&(s.t==="q"||s.t==="box"||s.t==="ans")) h+=`<span class="chip ${q.g}">${q.g==="dota"?"Dota 2":"CS2"}</span>`;
+  } else h+=`<span class="round">${esc(cat.name)}</span>`;
+  h+=`<span class="spacer"></span><span class="clock" id="clock" hidden></span>`;
+  return h;
+}
+function slideHTML(s){
+  const r=ROUNDS[s.ri], q=r&&r.qs[s.qi];
+  switch(s.t){
+  case "title": return `
+    <div class="eyebrow">Домашний квиз · ${ROUNDS.length} раундов · ${totalQ} вопросов</div>
+    <h1 class="big">Дота<br>× КС2</h1>
+    <p class="lead">Герои, карты, пушки и турниры. Рассаживайтесь по командам, берите ручки и листочки.</p>`;
+  case "rules": return `
+    <div class="eyebrow">Правила</div>
+    <ul class="rules">
+      <li><div><strong>Команды по 2–6 человек.</strong> <span>Придумайте название — его запишем в таблицу очков.</span></div></li>
+      <li><div><strong>Каждый раунд — новый листочек.</strong> <span>Сверху название команды, дальше номер вопроса и ответ.</span></div></li>
+      <li><div><strong>Время видно внизу экрана.</strong> <span>Закончилось — ручки вниз, исправлять нельзя.</span></div></li>
+      <li><div><strong>После раунда сдаём листочки.</strong> <span>Потом разбираем ответы на экране.</span></div></li>
+      <li><div><strong>Верный ответ — 1 балл.</strong> <span>В раунде ставок и в финале свои правила, расскажем перед ними.</span></div></li>
+      <li><div><strong>Телефоны экраном вниз.</strong> <span>Гуглить нельзя, спорить с ведущим можно.</span></div></li>
+    </ul>`;
+  case "round": return `
+    <div class="eyebrow">Раунд ${s.ri+1} из ${ROUNDS.length}</div>
+    <h1 class="big">${esc(r.name)}</h1>
+    <p class="lead">${esc(r.intro)}</p>
+    <div class="meta"><span><b>${r.kind==="box"?r.qs.length+" загадки":r.qs.length+" вопросов"}</b></span><span>Время <b>${r.time} с</b>${r.kind==="box"?" на подсказку":""}</span><span>Очки <b>${esc(r.pts)}</b></span></div>
+    <button class="start" id="bStart">▶ Старт раунда</button>`;
+  case "q": {
+    const n=s.qi+1;
+    if(r.kind==="choice") return `
+      <div class="qrow"><div class="qnum">${n}</div><div><p class="qtext">${esc(q.q)}</p></div></div>
+      <div class="opts">${q.o.map((o,i)=>`<div class="opt"><b>${L[i]}</b><span>${esc(o)}</span></div>`).join("")}</div>`;
+    if(r.kind==="image") return `
+      <div class="qrow"><div class="qnum">${n}</div><div><p class="qtext">${esc(q.q)}</p></div></div>
+      <div class="media">${mediaHTML(q,false)}</div>`;
+    if(r.kind==="emoji") return `
+      <div class="qrow"><div class="qnum">${n}</div><div><p class="qtext" style="color:var(--muted)">${esc(q.hint)}</p></div></div>
+      <div class="media"><div class="emoji">${q.e}</div></div>`;
+    return `<div class="qrow"><div class="qnum">${n}</div><div><p class="qtext">${esc(q.q)}</p></div></div>
+      ${r.kind==="bet"?`<div class="meta"><span>Ставка <b>1 · 2 · 3</b></span></div>`:""}`;
+  }
+  case "box": return `
+    <div class="qrow"><div class="qnum">${s.qi+1}</div><div><p class="qtext">Что в чёрном ящике?</p></div></div>
+    <ul class="hints">${q.hints.slice(0,s.h+1).map((h,i)=>`<li class="${i===s.h?"new":""}"><b>${i+1} · ${["3 очка","2 очка","1 очко"][i]}</b><span>${esc(h)}</span></li>`).join("")}</ul>`;
+  case "collect": return `
+    <div class="eyebrow">Раунд ${s.ri+1} окончен</div>
+    <h1 class="big">Сдаём<br>листочки</h1>
+    <p class="lead">Ручки вниз. Ведущий собирает ответы, потом разбираем.</p>`;
+  case "ans": {
+    let left="", right="";
+    const tag=`<div class="ans-label">Ответ</div>`;
+    if(r.kind==="choice"){
+      return `<div class="qrow"><div class="qnum">${s.qi+1}</div><div><p class="recap">${esc(q.q)}</p></div></div>
+        <div class="opts">${q.o.map((o,i)=>`<div class="opt ${i===q.a?"right":""}"><b>${L[i]}</b><span>${esc(o)}</span></div>`).join("")}</div>
+        ${q.note?`<p class="note">${esc(q.note)}</p>`:""}`;
+    }
+    const recap = r.kind==="emoji" ? `<div class="emoji" style="font-size:clamp(40px,6vw,110px);text-align:left">${q.e}</div>`
+                : r.kind==="box" ? `<p class="recap">${q.hints.map(esc).join(" · ")}</p>`
+                : `<p class="recap">${esc(q.q)}</p>`;
+    left=`<div class="qrow"><div class="qnum">${s.qi+1}</div><div>${recap}</div></div>
+      ${tag}<p class="ans">${esc(q.a)}</p>${q.note?`<p class="note">${esc(q.note)}</p>`:""}`;
+    if(q.img){ right=`<div class="media">${mediaHTML(q,true)}</div>`; return `<div class="ansgrid"><div style="display:grid;gap:clamp(12px,2.4vh,30px);min-width:0">${left}</div>${right}</div>`; }
+    return left;
+  }
+  case "scores": case "end": {
+    const ts=[...state.teams].sort((a,b)=>total(b)-total(a));
+    const max=Math.max(1,...ts.map(total));
+    const rows=ts.length?ts.map((t,i)=>`<div class="brow"><span class="pl">${i+1}</span><span class="nm">${esc(t.name)}</span><span class="bar"><i style="width:${total(t)/max*100}%"></i></span><span class="sc">${total(t)}</span></div>`).join(""):`<p class="empty">Добавьте команды: клавиша S.</p>`;
+    const end=s.t==="end";
+    return `<div class="eyebrow">${end?"Финальный счёт":"После раунда "+(s.ri+1)}</div>
+      <h1 class="h2">${end?(ts[0]?"Побеждает «"+esc(ts[0].name)+"»":"Игра окончена"):"Таблица очков"}</h1>
+      <div class="board">${rows}</div>
+      ${end?"":`<p class="small">Внести очки: клавиша S или кнопка «Очки».</p>`}`;
+  }
+  case "break": return `
+    <div class="eyebrow">Половина позади</div>
+    <h1 class="big">Перерыв<br>10 минут</h1>
+    <p class="lead">Дальше: обычные вопросы, ставки и чёрный ящик.</p>`;
+  }
+}
+
+/* ---------- timer + music ---------- */
+let tLeft=0,tFull=0,tRun=false,tId=null;
+/* menu: entry and category screens. lobby: a random song outside rounds (new pick each time, next random when it ends).
+   bed: from «Старт раунда» to «Сдаём листочки» one random track per round, looped */
+const TRACKS={
+  menu:["audio/menu.mp3"],
+  lobby:["audio/lobby1.mp3","audio/lobby2.mp3","audio/lobby3.mp3"],
+  bed:["audio/bed1.mp3","audio/bed2.mp3","audio/bed3.mp3","audio/bed4.mp3"]
+};
+const VOL={menu:.35,lobby:.12,bed:.16};
+let master=1, musicOn=true, unlocked=false, screen="intro", curMode=null;
+const P={menu:new Audio(),lobby:new Audio(),bed:new Audio()};
+const ok={menu:false,lobby:false,bed:false};
+const last={lobby:-1,bed:-1}, roundBed={};
+P.menu.loop=true; P.bed.loop=true;
+for(const k in P){
+  P[k].volume=0; P[k].preload="auto";
+  P[k].addEventListener("canplay",()=>{ok[k]=true;paintMusic()});
+  P[k].addEventListener("error",()=>{ok[k]=false;paintMusic()});
+}
+P.menu.src=TRACKS.menu[0];
+function pick(k){const n=TRACKS[k].length;let i=0;if(n>1)do{i=Math.floor(Math.random()*n)}while(i===last[k]);last[k]=i;return TRACKS[k][i]}
+P.lobby.addEventListener("ended",()=>{if(curMode==="lobby"){P.lobby.src=pick("lobby");P.lobby.play().catch(()=>{})}});
+function mode(){
+  if(!musicOn||!unlocked) return null;
+  if(screen!=="quiz") return "menu";
+  return hasTimer(slides[state.i])?"bed":"lobby";
+}
+const fades=new Map();
+function fade(a,to,ms,then){
+  clearInterval(fades.get(a));
+  const from=a.volume, t0=performance.now();
+  const id=setInterval(()=>{const k=Math.min(1,(performance.now()-t0)/ms);a.volume=Math.max(0,Math.min(1,from+(to-from)*k));if(k>=1){clearInterval(id);then&&then()}},40);
+  fades.set(a,id);
+}
+function syncMusic(){
+  const w=mode(), s=slides[state.i];
+  if(w==="lobby"&&curMode!=="lobby") P.lobby.src=pick("lobby");
+  if(w==="bed"){
+    if(roundBed[s.ri]===undefined) roundBed[s.ri]=pick("bed");
+    if(!P.bed.src.endsWith(roundBed[s.ri])) P.bed.src=roundBed[s.ri];
+  }
+  curMode=w;
+  for(const k in P){
+    if(k===w){P[k].play().catch(()=>{});fade(P[k],VOL[k]*master,k==="bed"?800:1500)}
+    else fade(P[k],0,500,()=>{if(curMode!==k)P[k].pause()});
+  }
+}
+/* browsers allow sound only after the first click or key press */
+function unlock(){if(unlocked)return;unlocked=true;syncMusic()}
+addEventListener("pointerdown",unlock,{capture:true});
+addEventListener("keydown",unlock,{capture:true});
+function volume(d){master=Math.max(0,Math.min(3,master+d));syncMusic();paintMusic()}
+function paintMusic(){
+  const b=$("#bMusic"), any=ok.menu||ok.lobby||ok.bed;
+  b.classList.toggle("on",any&&musicOn);
+  b.firstChild.textContent=!any?"Музыка: нет файлов":musicOn?`Музыка ${Math.round(master*100)}%`:"Музыка выкл";
+}
+function hasTimer(s){return s.t==="q"||s.t==="box"}
+function setupTimer(){
+  stopTimer();
+  const s=slides[state.i], r=ROUNDS[s.ri];
+  const clock=$("#clock"), bar=$("#tbar");
+  if(hasTimer(s)){tFull=tLeft=r.time;clock.hidden=false;bar.classList.remove("idle");paintTimer()}
+  else{clock.hidden=true;bar.classList.add("idle")}
+}
+function paintTimer(){
+  const c=$("#clock"); if(!c) return;
+  c.textContent=`${Math.floor(tLeft/60)}:${String(tLeft%60).padStart(2,"0")}`;
+  c.classList.toggle("low",tLeft<=10);
+  $("#tbar i").style.transform=`scaleX(${tFull?tLeft/tFull:1})`;
+  $("#bTimer").classList.toggle("on",tRun);
+  $("#bTstart").hidden=!(hasTimer(slides[state.i])&&!tRun&&tLeft>0);
+  $("#bTstart").textContent=tLeft<tFull?"▶ Продолжить":"▶ Старт";
+}
+function startTimer(){
+  if(!hasTimer(slides[state.i])||tLeft<=0) return;
+  tRun=true;
+  tId=setInterval(()=>{tLeft--;paintTimer();if(tLeft<=0){stopTimer();beep()}},1000);
+  paintTimer();
+}
+function stopTimer(){tRun=false;clearInterval(tId);paintTimer()}
+function toggleTimer(){tRun?stopTimer():startTimer()}
+function resetTimer(){stopTimer();tLeft=tFull;paintTimer()}
+let actx;
+function beep(){
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    [0,.28,.56].forEach((d,i)=>{const o=actx.createOscillator(),g=actx.createGain();o.type="square";o.frequency.value=i===2?520:780;
+      g.gain.setValueAtTime(.0001,actx.currentTime+d);g.gain.exponentialRampToValueAtTime(.18,actx.currentTime+d+.02);g.gain.exponentialRampToValueAtTime(.0001,actx.currentTime+d+(i===2?.6:.2));
+      o.connect(g).connect(actx.destination);o.start(actx.currentTime+d);o.stop(actx.currentTime+d+.7)});
+  }catch(e){}
+}
+function musicBtn(){musicOn=!musicOn;curMode=null;syncMusic();paintMusic()}
+
+/* ---------- navigation ---------- */
+function show(){
+  const s=slides[state.i], q=ROUNDS[s.ri]&&ROUNDS[s.ri].qs[s.qi];
+  document.documentElement.style.setProperty("--accent", q? (q.g==="cs"?"var(--cs)":"var(--dota)") : (s.ri%2?"var(--cs)":"var(--dota)"));
+  $("#hud").innerHTML=hud(s);
+  const el=$("#slide"); el.innerHTML=slideHTML(s); el.style.animation="none"; el.offsetHeight; el.style.animation="";
+  el.classList.toggle("center",s.t==="round");
+  const st=$("#bStart"); if(st) st.onclick=e=>{e.stopPropagation();unlock();go(1)};
+  $("#prog").style.width=(state.i/(slides.length-1)*100)+"%";
+  pixelate(); setupTimer(); syncMusic(); save();
+}
+/* once a round is started, every next question starts its timer by itself */
+function go(d){
+  const prev=slides[state.i], n=Math.max(0,Math.min(slides.length-1,state.i+d));
+  if(n===state.i) return;
+  state.i=n; show();
+  if(d>0&&hasTimer(slides[n])&&["round","q","box"].includes(prev.t)) startTimer();
+}
+
+/* ---------- scores editor ---------- */
+function paintScores(){
+  const head=`<tr><th>Команда</th>${ROUNDS.map((r,i)=>`<th title="${esc(r.name)}">Р${i+1}</th>`).join("")}<th>Итого</th><th></th></tr>`;
+  const rows=state.teams.map((t,ti)=>`<tr>
+    <td><input type="text" id="tn${ti}" data-ti="${ti}" data-f="name" value="${esc(t.name)}"></td>
+    ${ROUNDS.map((_,ri)=>`<td><input type="number" id="tp${ti}_${ri}" data-ti="${ti}" data-ri="${ri}" value="${t.pts[ri]??""}" step="1"></td>`).join("")}
+    <td class="tot" id="tt${ti}">${total(t)}</td>
+    <td><button class="del" data-del="${ti}" title="Удалить команду">×</button></td></tr>`).join("");
+  $("#scoreTbl").innerHTML=head+rows;
+}
+$("#scoreTbl").addEventListener("input",e=>{
+  const x=e.target, t=state.teams[x.dataset.ti]; if(!t) return;
+  if(x.dataset.f==="name") t.name=x.value; else t.pts[x.dataset.ri]=x.value===""?"":+x.value;
+  $("#tt"+x.dataset.ti).textContent=total(t); save();
+});
+$("#scoreTbl").addEventListener("click",e=>{const d=e.target.dataset.del;if(d!==undefined){state.teams.splice(+d,1);save();paintScores()}});
+$("#addTeam").onclick=()=>{state.teams.push({name:"Команда "+(state.teams.length+1),pts:[]});save();paintScores();const ins=document.querySelectorAll('#scoreTbl input[type=text]');ins[ins.length-1].select()};
+let resetArm=false;
+$("#resetAll").onclick=()=>{
+  if(!resetArm){resetArm=true;$("#resetNote").hidden=false;return}
+  state.teams.forEach(t=>t.pts=[]);state.i=0;resetArm=false;$("#resetNote").hidden=true;save();paintScores();show();
+};
+function openScores(){stopTimer();paintScores();$("#ovScores").hidden=false;resetArm=false;$("#resetNote").hidden=true}
+function closeScores(){$("#ovScores").hidden=true;show()}
+$("#closeScores").onclick=closeScores;
+$("#bScores").onclick=openScores;
+$("#bHelp").onclick=()=>{$("#ovHelp").hidden=false};
+$("#closeHelp").onclick=()=>{$("#ovHelp").hidden=true};
+
+/* ---------- input ---------- */
+$("#bPrev").onclick=()=>go(-1);
+$("#bNext").onclick=()=>go(1);
+$("#bTimer").onclick=toggleTimer;
+$("#bMusic").onclick=musicBtn;
+function full(){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{})}catch(e){}}
+$("#bFull").onclick=full;
+$("#stage").addEventListener("click",e=>{ if(e.clientX<innerWidth*0.25) go(-1); else go(1); });
+document.addEventListener("keydown",e=>{
+  const ovOpen=!$("#ovScores").hidden||!$("#ovHelp").hidden;
+  if(e.key==="Escape"){if(!$("#ovScores").hidden)closeScores();$("#ovHelp").hidden=true;return}
+  if(ovOpen||e.target.tagName==="INPUT") return;
+  const k=e.key;
+  if(screen!=="quiz"){
+    if(screen==="intro"&&(k==="Enter"||k===" ")){e.preventDefault();setScreen("cats")}
+    else if(k==="m"||k==="M"||k==="ь"||k==="Ь") musicBtn();
+    else if(k==="-"||k==="_") volume(-.25);
+    else if(k==="="||k==="+") volume(.25);
+    else if(k==="f"||k==="F"||k==="а"||k==="А") full();
+    return;
+  }
+  if(k==="ArrowRight"||k==="PageDown"||k==="Enter"){e.preventDefault();go(1)}
+  else if(k==="ArrowLeft"||k==="PageUp"||k==="Backspace"){e.preventDefault();go(-1)}
+  else if(k===" "){e.preventDefault();toggleTimer()}
+  else if(k==="r"||k==="R"||k==="к"||k==="К") resetTimer();
+  else if(k==="m"||k==="M"||k==="ь"||k==="Ь") musicBtn();
+  else if(k==="s"||k==="S"||k==="ы"||k==="Ы"){e.preventDefault();openScores()}
+  else if(k==="f"||k==="F"||k==="а"||k==="А") full();
+  else if(k==="-"||k==="_") volume(-.25);
+  else if(k==="="||k==="+") volume(.25);
+  else if(k==="Home"){state.i=0;show()}
+});
+let idle;
+document.addEventListener("mousemove",()=>{document.body.classList.add("mouse");clearTimeout(idle);idle=setTimeout(()=>document.body.classList.remove("mouse"),2500)});
+$("#ctl").addEventListener("click",e=>e.stopPropagation());
+$("#bTstart").addEventListener("click",e=>{e.stopPropagation();startTimer()});
+
+/* ---------- screens: entry → categories → quiz ---------- */
+function setScreen(s){
+  screen=s;
+  $("#intro").hidden=s!=="intro"; $("#cats").hidden=s!=="cats";
+  $("#stage").hidden=s!=="quiz"; $("#ctl").hidden=s!=="quiz";
+  if(s!=="quiz") stopTimer();
+  if(s==="cats") paintCats();
+  if(s==="quiz") show(); else syncMusic();
+}
+function paintCats(){
+  $("#cards").innerHTML=CATEGORIES.map((c,ci)=>{
+    const n=c.rounds.reduce((s,r)=>s+r.qs.length,0);
+    const going=state.cat===c.id&&state.i>0;
+    return `<div class="cardwrap">
+      <button class="card" data-ci="${ci}">
+        <span class="pic">${c.pics.map(p=>`<span style="background-image:url('${p}')"></span>`).join("")}</span>
+        <span class="body">
+          <span class="nm">${esc(c.name)}</span>
+          <span class="sb">${esc(c.sub)}</span>
+          <span class="mt">${c.rounds.length} раундов · ${n} вопросов</span>
+          <span class="go">${going?"Продолжить игру →":"Играть →"}</span>
+        </span>
+      </button>
+      ${going?`<button class="linkbtn" data-restart="${ci}">Начать заново</button>`:""}
+    </div>`;
+  }).join("");
+}
+function openCategory(ci,restart){
+  const c=CATEGORIES[ci];
+  if(restart||state.cat!==c.id){state.i=0;for(const k in roundBed)delete roundBed[k]}
+  state.cat=c.id; useCategory(c); setScreen("quiz");
+}
+$("#cards").addEventListener("click",e=>{
+  const r=e.target.closest("[data-restart]"); if(r){openCategory(+r.dataset.restart,true);return}
+  const c=e.target.closest("[data-ci]"); if(c) openCategory(+c.dataset.ci,false);
+});
+$("#bEnter").onclick=()=>{unlock();setScreen("cats")};
+$("#bMenu").onclick=()=>setScreen("cats");
+
+useCategory(CATEGORIES.find(c=>c.id===state.cat)||CATEGORIES[0]);
+if(!(state.i>=0&&state.i<slides.length)) state.i=0;
+paintMusic();
+const jump=new URLSearchParams(location.search).get("slide");
+if(jump!==null){state.i=+jump;setScreen("quiz")} else setScreen("intro");
+</script>
+</body>
+</html>
