@@ -121,8 +121,6 @@ canvas.pix{width:min(60vw,58vh);aspect-ratio:88/64;max-width:100%;image-renderin
 .start{margin-top:clamp(10px,3vh,40px);font-family:var(--f-display);font-weight:700;font-size:clamp(20px,2.4vw,44px);padding:.75em 1.7em;border:none;border-radius:999px;background:var(--accent);color:#fff;cursor:pointer;animation:pulse 2.2s ease-out infinite}
 .start:hover{filter:brightness(1.1)}
 @keyframes pulse{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent) 55%,transparent)}100%{box-shadow:0 0 0 28px transparent}}
-.tstart{position:absolute;left:50%;bottom:24px;transform:translateX(-50%);font-family:var(--f-display);font-weight:700;font-size:clamp(14px,1.3vw,22px);padding:.6em 1.4em;border:1px solid var(--accent);border-radius:999px;background:var(--panel);color:var(--ink);cursor:pointer;z-index:2}
-.tstart:hover{background:var(--accent);color:#fff}
 @media (prefers-reduced-motion:reduce){.start{animation:none}}
 
 /* timer bar */
@@ -133,13 +131,56 @@ canvas.pix{width:min(60vw,58vh);aspect-ratio:88/64;max-width:100%;image-renderin
 .prog{height:2px;background:var(--line)}
 .prog i{display:block;height:100%;background:var(--muted);transition:width .3s}
 
-/* control bar: shows on mouse move */
-.ctl{position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:color-mix(in srgb,var(--panel) 92%,transparent);border:1px solid var(--line);border-radius:8px;z-index:5;opacity:0;transition:opacity .3s;max-width:calc(100% - 32px);flex-wrap:wrap;justify-content:center}
-body.mouse .ctl{opacity:1}
-.ctl button{background:transparent;border:1px solid transparent;border-radius:5px;padding:.45em .8em;font-size:14px;cursor:pointer;white-space:nowrap}
-.ctl button:hover{background:var(--line)}
-.ctl button.on{border-color:var(--good);color:var(--good)}
-.ctl kbd{font-family:var(--f-mono);font-size:11px;color:var(--muted);margin-left:.4em}
+/* host deck: slides up from the bottom edge while the mouse moves; the timer button in the middle doubles as the countdown dial */
+.dock{position:fixed;left:0;right:0;bottom:0;z-index:5;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:20px;
+  padding:12px max(20px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(20px,env(safe-area-inset-left,0px));
+  background:#0a0c10;border-top:1px solid var(--line);box-shadow:0 -24px 60px #000c;
+  transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+body.mouse .dock,.dock:hover,.dock:focus-within{transform:none}
+@media (hover:none){.dock{transform:none}}
+.dock .side{display:flex;align-items:center;gap:6px;min-width:0}
+.dock .side.r{justify-content:flex-end}
+.dock .mid{display:flex;align-items:center;gap:14px}
+.ib{flex:none;width:44px;height:44px;display:grid;place-items:center;border-radius:12px;border:none;background:transparent;color:#c9ccd3;cursor:pointer;transition:background .15s,color .15s}
+.ib:hover{background:#1b2029;color:var(--ink)}
+.ib svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ib.big svg{width:26px;height:26px}
+.sep{flex:none;width:1px;height:26px;background:var(--line);margin-inline:8px}
+.play{position:relative;flex:none;width:64px;height:64px;border-radius:50%;border:none;background:var(--accent);color:#fff;display:grid;place-items:center;cursor:pointer;transition:background .3s,transform .15s}
+.play:hover{transform:scale(1.04)}
+.play:active{transform:scale(.97)}
+.play:disabled{background:#1b2029;color:#565c68;cursor:default;transform:none}
+.play .ring{position:absolute;inset:-6px;width:76px;height:76px;transform:rotate(-90deg);pointer-events:none}
+.play .ring circle{fill:none;stroke-width:3}
+.play .ring .track{stroke:#1b2029}
+.play .ring .left{stroke:var(--ink);stroke-linecap:round;transition:stroke-dashoffset .9s linear}
+.play svg.ic{width:24px;height:24px;fill:currentColor}
+.play .i-pause,.play.run .i-play{display:none}
+.play.run .i-pause{display:block}
+.where{display:grid;gap:7px;min-width:0;padding-left:6px}
+.where b{font-weight:600;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.where span{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.segs{display:flex;gap:4px}
+.segs i{width:26px;height:4px;border-radius:2px;background:#1b2029}
+.segs i.done{background:#4a505c}
+.segs i.now{background:var(--accent)}
+.np{display:flex;align-items:center;gap:10px;min-width:0;max-width:280px;margin-right:4px}
+.eq{flex:none;display:flex;gap:2px;align-items:flex-end;width:14px;height:14px}
+.eq i{flex:1;height:25%;border-radius:1px;background:#4a505c}
+.np.live .eq i{background:var(--cs);animation:eq .9s ease-in-out infinite alternate}
+.np.live .eq i:nth-child(2){animation-delay:-.3s}
+.np.live .eq i:nth-child(3){animation-delay:-.6s}
+@keyframes eq{from{height:20%}to{height:100%}}
+@media (prefers-reduced-motion:reduce){.np.live .eq i{animation:none;height:70%}}
+#npName{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#bMute .i-off,#bMute.off .i-on{display:none}
+#bMute.off .i-off{display:block}
+#vol{-webkit-appearance:none;appearance:none;flex:none;width:96px;height:4px;border-radius:2px;cursor:pointer;
+  background:linear-gradient(90deg,var(--ink) var(--p,100%),#2a303b var(--p,100%))}
+#vol::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--ink);border:none}
+#vol::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--ink);border:none}
+@media (max-width:900px){.np,.segs{display:none}.where span{display:none}}
+@media (max-width:620px){.dock{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 8px}.where,#vol,.dock .sep{display:none}.dock .mid{order:-1;flex-basis:100%;justify-content:center}}
 
 /* overlay: score editor */
 .ov{position:fixed;inset:0;background:#000b;z-index:10;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
@@ -228,22 +269,37 @@ td.tot{font-family:var(--f-mono);font-weight:700;color:var(--cs)}
   <div class="hud" id="hud"></div>
   <div id="slide"></div>
   <div class="foot">
-    <button class="tstart" id="bTstart" hidden>▶ Старт</button>
     <div class="tbar idle" id="tbar"><i></i></div>
     <div class="prog"><i id="prog"></i></div>
   </div>
 </div>
 
-<div class="ctl" id="ctl" hidden>
-  <button id="bMenu">Меню</button>
-  <button id="bPrev" title="Назад">◀<kbd>←</kbd></button>
-  <button id="bTimer">Таймер<kbd>Пробел</kbd></button>
-  <button id="bNext" title="Дальше">▶<kbd>→</kbd></button>
-  <button id="bMusic">Музыка<kbd>M</kbd></button>
-  <button id="bScores">Очки<kbd>S</kbd></button>
-  <button id="bFull">Экран<kbd>F</kbd></button>
-  <button id="bHelp">?</button>
-</div>
+<nav class="dock" id="dock" aria-label="Пульт ведущего" hidden>
+  <div class="side l">
+    <button class="ib" id="bMenu" title="К категориям" aria-label="К категориям"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></svg></button>
+    <div class="where"><b id="dWhere"></b><div class="segs" id="dSegs"></div><span id="dStep"></span></div>
+  </div>
+  <div class="mid">
+    <button class="ib" id="bReset" title="Таймер заново (R)" aria-label="Таймер заново (R)"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></button>
+    <button class="ib big" id="bPrev" title="Назад (←)" aria-label="Назад (←)"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+    <button class="play" id="bPlay" title="Таймер (пробел)">
+      <svg class="ring" viewBox="0 0 76 76"><circle class="track" cx="38" cy="38" r="35"/><circle class="left" id="ring" cx="38" cy="38" r="35" stroke-dasharray="219.9" stroke-dashoffset="219.9"/></svg>
+      <svg class="ic i-play" viewBox="0 0 24 24"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+      <svg class="ic i-pause" viewBox="0 0 24 24"><rect x="6" y="5" width="4.5" height="14" rx="1.2"/><rect x="13.5" y="5" width="4.5" height="14" rx="1.2"/></svg>
+    </button>
+    <button class="ib big" id="bNext" title="Дальше (→)" aria-label="Дальше (→)"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    <span class="ib" aria-hidden="true"></span>
+  </div>
+  <div class="side r">
+    <div class="np" id="np"><span class="eq" aria-hidden="true"><i></i><i></i><i></i></span><span id="npName"></span></div>
+    <button class="ib" id="bMute" title="Музыка (M)"><svg class="i-on" viewBox="0 0 24 24"><path d="M11 5 6.5 9H3.5v6h3L11 19z"/><path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg><svg class="i-off" viewBox="0 0 24 24"><path d="M11 5 6.5 9H3.5v6h3L11 19z"/><path d="m16 9.5 5 5m0-5-5 5"/></svg></button>
+    <input type="range" id="vol" min="0" max="100" step="1" aria-label="Громкость музыки (− / =)" title="Громкость (− / =)">
+    <span class="sep"></span>
+    <button class="ib" id="bScores" title="Очки команд (S)" aria-label="Очки команд (S)"><svg viewBox="0 0 24 24"><path d="M8 4h8v5a4 4 0 0 1-8 0z"/><path d="M16 5.5h3V7a3 3 0 0 1-3 3M8 5.5H5V7a3 3 0 0 0 3 3"/><path d="M12 13v4M8.5 20h7"/></svg></button>
+    <button class="ib" id="bFull" title="Полный экран (F)" aria-label="Полный экран (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    <button class="ib" id="bHelp" title="Клавиши" aria-label="Клавиши"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"/></svg></button>
+  </div>
+</nav>
 
 <div class="ov" id="ovScores" hidden>
   <div class="sheet">
@@ -284,69 +340,68 @@ const DOTA_CS = [
   name:"Разминка", kind:"choice", time:30, pts:"1 балл",
   intro:"Семь вопросов с вариантами. Пишем букву или сам ответ.",
   qs:[
-    {g:"dota", q:"Как называются две стороны в Dota 2?", o:["Свет и Тьма","Radiant и Dire","Альянс и Орда","Sentinel и Scourge"], a:1,
-     note:"Sentinel и Scourge — стороны в первой DotA на движке Warcraft III."},
-    {g:"cs", q:"Сколько раундов нужно выиграть, чтобы взять карту в CS2 (формат MR12)?", o:["12","13","15","16"], a:1,
-     note:"В CS2 играют до 13 побед из 24 раундов. В CS:GO было до 16 (MR15)."},
-    {g:"dota", q:"Какая команда выиграла самый первый The International в 2011 году?", o:["Natus Vincere","Team Spirit","EHOME","OG"], a:0,
-     note:"Na'Vi забрали миллион долларов на первом TI в Кёльне."},
-    {g:"cs", q:"Сколько секунд тикает заложенная бомба в соревновательном CS2?", o:["35","40","45","60"], a:1},
-    {g:"dota", q:"Какой предмет даёт герою вторую жизнь?", o:["Black King Bar","Blink Dagger","Aegis of the Immortal","Divine Rapier"], a:2},
-    {g:"cs", q:"Сколько стоит набор сапёра (defuse kit) в CS2?", o:["$200","$400","$500","$650"], a:1,
-     note:"С ним бомба разминируется за 5 секунд вместо 10."},
-    {g:"dota", q:"Какая команда первой выиграла The International два раза подряд?", o:["Team Spirit","Team Liquid","OG","Evil Geniuses"], a:2,
-     note:"OG взяли TI8 (2018) и TI9 (2019)."}
+    {g:"dota", q:"Как называются две стороны в Доте 2?", o:["Силы Света и Силы Тьмы","Альянс и Орда","Стражи и Плеть","Небеса и Преисподняя"], a:0,
+     note:"Стражи и Плеть — стороны в первой Доте, которая была картой для Варкрафта III."},
+    {g:"cs", q:"Сколько раундов нужно выиграть, чтобы взять карту в КС2?", o:["12","13","15","16"], a:1,
+     note:"В КС2 играют до 13 побед из 24 раундов. В КС:ГО играли до 16."},
+    {g:"dota", q:"Какая команда выиграла самый первый Интернешнл в 2011 году?", o:["Нави","Тим Спирит","Ликвид","ОГ"], a:0,
+     note:"Нави забрали миллион долларов на первом Интернешнле в Кёльне."},
+    {g:"cs", q:"Сколько секунд тикает заложенная бомба в соревновательной КС2?", o:["35","40","45","60"], a:1},
+    {g:"dota", q:"Какой предмет даёт герою вторую жизнь?", o:["БКБ","Блинк","Аегис","Рапира"], a:2},
+    {g:"cs", q:"Сколько стоит набор сапёра в КС2?", o:["$200","$400","$500","$650"], a:1},
+    {g:"dota", q:"Какая команда первой выиграла Интернешнл два раза подряд?", o:["Тим Спирит","Ликвид","ОГ","Нави"], a:2,
+     note:"ОГ взяли Интернешнл в 2018 и 2019 годах."}
   ]
 },
 {
   name:"Картинки", kind:"image", time:40, pts:"1 балл",
   intro:"Узнайте героя, способность, предмет или оружие по фрагменту.",
   qs:[
-    {g:"dota", q:"Чья это рука?", img:"img/pudge.png", fx:{k:"zoom",x:88,y:15,s:2.3}, a:"Pudge", note:"Тот самый крюк."},
-    {g:"dota", q:"Чей это камень на лбу?", img:"img/crystal_maiden.png", fx:{k:"zoom",x:50,y:0,s:3}, a:"Crystal Maiden", note:"В народе — Кристалка или ЦМ."},
-    {g:"dota", q:"Чья это ультимативная способность?", img:"img/enigma_black_hole.png", fx:{k:"icon"}, a:"Enigma — Black Hole"},
-    {g:"dota", q:"Чья это ультимативная способность?", img:"img/tidehunter_ravage.png", fx:{k:"icon"}, a:"Tidehunter — Ravage"},
-    {g:"dota", q:"Какой это предмет?", img:"img/blink.png", fx:{k:"pixel",b:5}, a:"Blink Dagger", note:"Телепорт на короткую дистанцию. Его нельзя прожать, если герой недавно получил урон."},
-    {g:"cs", q:"Что это за оружие?", img:"img/negev.png", fx:{k:"sil"}, a:"Negev", note:"Пулемёт за $1700. Чем дольше стреляешь, тем точнее."},
-    {g:"cs", q:"Что это за оружие?", img:"img/zeus.png", fx:{k:"sil"}, a:"Zeus x27", note:"Электрошокер на один выстрел, $200."}
+    {g:"dota", q:"Чья это рука?", img:"img/pudge.png", fx:{k:"zoom",x:88,y:15,s:2.3}, a:"Пудж", note:"Тот самый крюк."},
+    {g:"dota", q:"Чей это камень на лбу?", img:"img/crystal_maiden.png", fx:{k:"zoom",x:50,y:0,s:3}, a:"Кристал Мейден", note:"В народе — Кристалка или ЦМ."},
+    {g:"dota", q:"Чья это ультимативная способность?", img:"img/enigma_black_hole.png", fx:{k:"icon"}, a:"Энигма", note:"Ульта «Чёрная дыра» затягивает всех врагов в центр."},
+    {g:"dota", q:"Чья это ультимативная способность?", img:"img/tidehunter_ravage.png", fx:{k:"icon"}, a:"Тайдхантер", note:"Ульта «Рэвадж»: щупальца подбрасывают всех врагов вокруг."},
+    {g:"dota", q:"Какой это предмет?", img:"img/blink.png", fx:{k:"pixel",b:5}, a:"Блинк", note:"Телепорт на короткую дистанцию. Его нельзя прожать, если герой недавно получил урон."},
+    {g:"cs", q:"Что это за оружие?", img:"img/negev.png", fx:{k:"sil"}, a:"Негев", note:"Пулемёт за $1700. Чем дольше стреляешь, тем точнее."},
+    {g:"cs", q:"Что это за оружие?", img:"img/zeus.png", fx:{k:"sil"}, a:"Зевс", note:"Электрошокер на один выстрел, $200."}
   ]
 },
 {
   name:"Эмодзи-шарады", kind:"emoji", time:40, pts:"1 балл", breakAfter:true,
   intro:"Расшифруйте эмодзи. Это герой, карта или фраза из игры — подсказка в углу.",
   qs:[
-    {g:"dota", e:"🧙‍♂️ 🔥 ❄️ ⚡", hint:"Герой", a:"Invoker", note:"Огонь, лёд и молния — сферы Exort, Quas и Wex."},
-    {g:"cs", e:"🏜️ 2️⃣", hint:"Карта", a:"Dust II"},
-    {g:"dota", e:"🐒 👑", hint:"Герой", a:"Monkey King"},
-    {g:"cs", e:"🏗️ 😵‍💫", hint:"Карта", a:"Vertigo", note:"Vertigo — головокружение. Карта на крыше недостроенного небоскрёба."},
-    {g:"dota", e:"🐉 🛡️ ⚔️", hint:"Герой", a:"Dragon Knight"},
-    {g:"dota", e:"💣 💣 💣 🤪", hint:"Герой", a:"Techies"},
-    {g:"cs", e:"💣 ➡️ 🌱", hint:"Фраза", a:"«The bomb has been planted»", note:"Planted — заложена, а дословно «посажена»."}
+    {g:"dota", e:"🧙‍♂️ 🔥 ❄️ ⚡", hint:"Герой", a:"Инвокер", note:"Огонь, лёд и молния — его три сферы: Экзорт, Квас и Векс."},
+    {g:"cs", e:"🏜️ 2️⃣", hint:"Карта", a:"Даст 2"},
+    {g:"dota", e:"🐒 👑", hint:"Герой", a:"Манки Кинг", note:"Он же Король обезьян."},
+    {g:"cs", e:"🏗️ 😵‍💫", hint:"Карта", a:"Вертиго", note:"В переводе — головокружение. Карта на крыше недостроенного небоскрёба."},
+    {g:"dota", e:"🐉 🛡️ ⚔️", hint:"Герой", a:"Драгон Найт"},
+    {g:"dota", e:"💣 💣 💣 🤪", hint:"Герой", a:"Течис"},
+    {g:"cs", e:"💣 ➡️ 🌱", hint:"Фраза", a:"«Бомба заложена»", note:"В оригинале бомбу «сажают», как растение. Отсюда росток."}
   ]
 },
 {
   name:"Дота против КС", kind:"open", time:45, pts:"1 балл",
   intro:"Обычные вопросы без вариантов. Пишем ответ словами или числом.",
   qs:[
-    {g:"dota", q:"В каком году вышел официальный релиз Dota 2?", a:"2013", note:"9 июля 2013 года."},
-    {g:"cs", q:"Какое максимальное количество денег может быть у игрока в соревновательном CS2?", a:"$16 000"},
+    {g:"dota", q:"В каком году вышла Дота 2?", a:"2013", note:"Официальный релиз — 9 июля 2013 года."},
+    {g:"cs", q:"Какое максимальное количество денег может быть у игрока в соревновательной КС2?", a:"$16 000"},
     {g:"dota", q:"Сколько слотов в основном инвентаре героя (без рюкзака, нейтрального слота и телепорта)?", a:"6"},
-    {g:"cs", q:"Какую фразу кричит персонаж, когда бросает осколочную гранату?", a:"«Fire in the hole!»"},
-    {g:"dota", q:"Какое здание нужно уничтожить на базе соперника, чтобы победить?", a:"Древний (Ancient), он же трон"},
-    {g:"cs", q:"За какую команду играл s1mple, когда выиграл свой первый мейджор (PGL Stockholm 2021)?", a:"Natus Vincere", note:"Na'Vi прошли тот мейджор, не проиграв ни одной карты."},
-    {g:"dota", q:"Какая команда выиграла TI10 в 2021 году с рекордным призовым фондом около $40 млн?", a:"Team Spirit", note:"Spirit выиграли ещё и TI 2023."}
+    {g:"cs", q:"Сколько стоит бронежилет со шлемом в КС2?", a:"$1000", note:"Без шлема — $650."},
+    {g:"dota", q:"Какое здание нужно уничтожить на базе соперника, чтобы победить?", a:"Трон (Древний)"},
+    {g:"cs", q:"За какую команду играл Симпл, когда выиграл свой первый мейджор (Стокгольм, 2021)?", a:"Нави", note:"Нави прошли тот мейджор, не проиграв ни одной карты."},
+    {g:"dota", q:"Какая команда выиграла Интернешнл в 2021 году с рекордным призовым фондом около $40 млн?", a:"Тим Спирит", note:"Спирит выиграли и Интернешнл 2023."}
   ]
 },
 {
   name:"Ставки", kind:"bet", time:60, pts:"ставка 1–3",
   intro:"Рядом с ответом пишем ставку: 1, 2 или 3. Каждую ставку можно использовать два раза за раунд. Верно — плюс ставка, ошибка — минус ставка.",
   qs:[
-    {g:"dota", q:"Как расшифровывается жанр MOBA?", a:"Multiplayer Online Battle Arena"},
-    {g:"cs", q:"Что означает приставка de_ в названиях карт вроде de_dust2?", a:"Defuse — разминирование", note:"Карты с cs_ — режим спасения заложников."},
-    {g:"dota", q:"Под каким ником известен разработчик DotA Allstars, который потом делал Dota 2 в Valve?", a:"IceFrog"},
-    {g:"cs", q:"Какая команда выиграла первый мейджор по CS:GO в Катовице в 2014 году?", a:"Virtus.pro"},
-    {g:"dota", q:"Какой максимальный уровень героя в Dota 2?", a:"30"},
-    {g:"cs", q:"Как называется режим CS2, где команды играют 2 на 2 на маленьких картах?", a:"Wingman (Напарники)"}
+    {g:"dota", q:"Как называется жанр, к которому относится Дота 2? Четыре буквы.", a:"МОБА", note:"Многопользовательская онлайн-арена."},
+    {g:"cs", q:"Сколько секунд длится разминирование бомбы без набора сапёра?", a:"10", note:"С набором сапёра — 5 секунд."},
+    {g:"dota", q:"Под каким ником известен создатель первой Доты, который потом делал Доту 2?", a:"Айсфрог"},
+    {g:"cs", q:"Какая команда выиграла первый мейджор по КС:ГО в Катовице в 2014 году?", a:"Виртус Про"},
+    {g:"dota", q:"Какой максимальный уровень героя в Доте 2?", a:"30"},
+    {g:"cs", q:"Как называется режим КС2, где команды играют двое на двое на маленьких картах?", a:"«Напарники»"}
   ]
 },
 {
@@ -354,8 +409,8 @@ const DOTA_CS = [
   intro:"Три загадки по три подсказки. Ответ можно написать после любой подсказки: после первой — 3 балла, после второй — 2, после третьей — 1. Рядом с ответом пишем номер подсказки.",
   qs:[
     {g:"dota", hints:["Я нейтрал, но меня боятся обе стороны.","Каждый раз, когда меня убивают, я возвращаюсь сильнее.","После моей смерти остаётся Аегис."], a:"Рошан"},
-    {g:"cs", hints:["Я одна из самых дорогих покупок в CS2 и убиваю с одного выстрела.","За убийство мной дают всего $100 — втрое меньше, чем за обычную винтовку.","В русском комьюнити меня зовут «слон» или «авик»."], a:"AWP", img:"img/awp.png"},
-    {g:"cs", hints:["Я живу на нескольких картах CS, но в матче не участвую.","Меня можно убить, но денег за это не дадут.","Ко-ко-ко."], a:"Курица"}
+    {g:"cs", hints:["Я одна из самых дорогих покупок в КС2 и убиваю с одного выстрела.","За убийство мной дают всего $100 — втрое меньше, чем за обычную винтовку.","Меня зовут «слон» или «авик»."], a:"АВП", img:"img/awp.png"},
+    {g:"cs", hints:["Я живу на нескольких картах КС, но в матче не участвую.","Меня можно убить, но денег за это не дадут.","Ко-ко-ко."], a:"Курица"}
   ]
 }
 ];
@@ -363,7 +418,7 @@ const DOTA_CS = [
 /* ================= КАТЕГОРИИ ================= */
 /* новая категория = ещё один объект с массивом раундов в том же формате */
 const CATEGORIES = [
-  {id:"dota-cs2", name:"Дота × КС2", sub:"Dota 2 и Counter-Strike 2: герои, карты, пушки и турниры", rounds:DOTA_CS,
+  {id:"dota-cs2", name:"Дота × КС2", sub:"Дота 2 и Контр-Страйк 2: герои, карты, оружие и турниры", rounds:DOTA_CS,
    pics:["img/pudge.png","img/awp.png"]}
 ];
 
@@ -389,11 +444,12 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const L="АБВГ";
 
-/* ---------- storage ---------- */
-const KEY="kviz-dota-cs2";
-function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return {}}}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}}
-const state=Object.assign({i:0,teams:[{name:"Команда 1",pts:[]},{name:"Команда 2",pts:[]}]},load());
+/* ---------- game state ----------
+   lives only while the page is open: every visit starts a new game (only the volume is remembered) */
+const state={i:0,cat:null,teams:[{name:"Команда 1",pts:[]},{name:"Команда 2",pts:[]}]};
+function save(){}
+function newGame(){state.i=0;state.teams.forEach(t=>t.pts=[]);for(const k in roundTrack)delete roundTrack[k]}
+addEventListener("beforeunload",e=>{if(state.i>0||state.teams.some(t=>t.pts.length)){e.preventDefault();e.returnValue=""}});
 const total=t=>ROUNDS.reduce((s,_,i)=>s+(+t.pts[i]||0),0);
 
 /* ---------- media ---------- */
@@ -431,7 +487,7 @@ function hud(s){
     if(s.t==="q"||s.t==="box") h+=`<span>Вопрос ${s.qi+1} / ${r.qs.length}</span>`;
     if(s.t==="ans") h+=`<span>Ответ ${s.qi+1} / ${r.qs.length}</span>`;
     const q=r.qs[s.qi];
-    if(q&&(s.t==="q"||s.t==="box"||s.t==="ans")) h+=`<span class="chip ${q.g}">${q.g==="dota"?"Dota 2":"CS2"}</span>`;
+    if(q&&(s.t==="q"||s.t==="box"||s.t==="ans")) h+=`<span class="chip ${q.g}">${q.g==="dota"?"Дота 2":"КС2"}</span>`;
   } else h+=`<span class="round">${esc(cat.name)}</span>`;
   h+=`<span class="spacer"></span><span class="clock" id="clock" hidden></span>`;
   return h;
@@ -504,7 +560,7 @@ function slideHTML(s){
     return `<div class="eyebrow">${end?"Финальный счёт":"После раунда "+(s.ri+1)}</div>
       <h1 class="h2">${end?(ts[0]?"Побеждает «"+esc(ts[0].name)+"»":"Игра окончена"):"Таблица очков"}</h1>
       <div class="board">${rows}</div>
-      ${end?"":`<p class="small">Внести очки: клавиша S или кнопка «Очки».</p>`}`;
+      ${end?"":`<p class="small">Внести очки: клавиша S или кубок на пульте.</p>`}`;
   }
   case "break": return `
     <div class="eyebrow">Половина позади</div>
@@ -515,31 +571,48 @@ function slideHTML(s){
 
 /* ---------- timer + music ---------- */
 let tLeft=0,tFull=0,tRun=false,tId=null;
-/* menu: entry and category screens. lobby: a random song outside rounds (new pick each time, next random when it ends).
-   bed: from «Старт раунда» to «Сдаём листочки» one random track per round, looped */
-const TRACKS={
-  menu:["audio/menu.mp3"],
-  lobby:["audio/lobby1.mp3","audio/lobby2.mp3","audio/lobby3.mp3"],
-  bed:["audio/bed1.mp3","audio/bed2.mp3","audio/bed3.mp3","audio/bed4.mp3"]
+const RING=219.9; /* circumference of the countdown ring around the timer button, r=35 */
+/* ================= МУЗЫКА =================
+   Три пула, каждый в своей папке audio/<пул>/. Чтобы добавить песню — положить mp3 в папку и дописать строку сюда.
+   menu    — вход и выбор категории, по кругу;
+   between — всё, что вне раунда: заставка, правила, заставка раунда, разбор ответов, очки, перерыв.
+             Каждый раз новая песня из пула; закончилась — следующая;
+   round   — от «Старт раунда» до «Сдаём листочки». Одна песня на весь раунд, по кругу, в следующем раунде — другая. */
+const MUSIC={
+  menu:   {vol:.35, loop:true,  tracks:[["audio/menu/aigel-pyyala.mp3","Аигел — Пыяла"]]},
+  between:{vol:.14, loop:false, tracks:[
+    ["audio/between/elektroslabost.mp3","Электрослабость — Олений пенис"],
+    ["audio/between/friends.mp3","«Друзья» — заставка"],
+    ["audio/between/ebanko.mp3","Ебанько — Я ебу собак"]]},
+  round:  {vol:.16, loop:true,  tracks:[
+    ["audio/round/khsm-voting.mp3","Миллионер — голосование зала"],
+    ["audio/round/khsm-expert.mp3","Миллионер — звонок эксперту"],
+    ["audio/round/khsm-closing.mp3","Миллионер — финальные титры"],
+    ["audio/round/khsm-q1-5.mp3","Миллионер — вопросы 1–5"]]}
 };
-const VOL={menu:.35,lobby:.12,bed:.16};
 let master=1, musicOn=true, unlocked=false, screen="intro", curMode=null;
-const P={menu:new Audio(),lobby:new Audio(),bed:new Audio()};
-const ok={menu:false,lobby:false,bed:false};
-const last={lobby:-1,bed:-1}, roundBed={};
-P.menu.loop=true; P.bed.loop=true;
-for(const k in P){
-  P[k].volume=0; P[k].preload="auto";
-  P[k].addEventListener("canplay",()=>{ok[k]=true;paintMusic()});
-  P[k].addEventListener("error",()=>{ok[k]=false;paintMusic()});
+try{const v=parseFloat(localStorage.getItem("kviz-volume"));if(v>=0&&v<=1)master=v}catch(e){}
+const P={}, bags={}, lastTrack={}, playing={}, roundTrack={};
+for(const k in MUSIC){
+  const a=new Audio(); a.loop=MUSIC[k].loop; a.preload="auto"; a.volume=0; P[k]=a;
+  a.addEventListener("play",paintMusic); a.addEventListener("pause",paintMusic);
 }
-P.menu.src=TRACKS.menu[0];
-function pick(k){const n=TRACKS[k].length;let i=0;if(n>1)do{i=Math.floor(Math.random()*n)}while(i===last[k]);last[k]=i;return TRACKS[k][i]}
-P.lobby.addEventListener("ended",()=>{if(curMode==="lobby"){P.lobby.src=pick("lobby");P.lobby.play().catch(()=>{})}});
+/* shuffle bag: every song of a pool plays once before any repeats, never the same twice in a row */
+function nextTrack(k){
+  const list=MUSIC[k].tracks;
+  if(!bags[k]||!bags[k].length){
+    bags[k]=list.map((_,i)=>i).sort(()=>Math.random()-.5);
+    if(bags[k].length>1&&bags[k][bags[k].length-1]===lastTrack[k]) bags[k].unshift(bags[k].pop());
+  }
+  const i=bags[k].pop(); lastTrack[k]=i; return list[i];
+}
+function cue(k,t){if(playing[k]===t)return;playing[k]=t;P[k].src=t[0]}
+cue("menu",MUSIC.menu.tracks[0]);
+P.between.addEventListener("ended",()=>{if(curMode==="between"){cue("between",nextTrack("between"));P.between.play().catch(()=>{})}});
 function mode(){
   if(!musicOn||!unlocked) return null;
   if(screen!=="quiz") return "menu";
-  return hasTimer(slides[state.i])?"bed":"lobby";
+  return hasTimer(slides[state.i])?"round":"between";
 }
 const fades=new Map();
 function fade(a,to,ms,then){
@@ -550,26 +623,37 @@ function fade(a,to,ms,then){
 }
 function syncMusic(){
   const w=mode(), s=slides[state.i];
-  if(w==="lobby"&&curMode!=="lobby") P.lobby.src=pick("lobby");
-  if(w==="bed"){
-    if(roundBed[s.ri]===undefined) roundBed[s.ri]=pick("bed");
-    if(!P.bed.src.endsWith(roundBed[s.ri])) P.bed.src=roundBed[s.ri];
+  if(w==="between"&&curMode!=="between") cue("between",nextTrack("between"));
+  if(w==="round"){
+    if(!roundTrack[s.ri]){roundTrack[s.ri]=nextTrack("round");P.round.currentTime=0}
+    cue("round",roundTrack[s.ri]);
   }
   curMode=w;
   for(const k in P){
-    if(k===w){P[k].play().catch(()=>{});fade(P[k],VOL[k]*master,k==="bed"?800:1500)}
+    if(k===w){P[k].play().catch(()=>{});fade(P[k],MUSIC[k].vol*master,k==="round"?800:1500)}
     else fade(P[k],0,500,()=>{if(curMode!==k)P[k].pause()});
   }
+  paintMusic();
 }
 /* browsers allow sound only after the first click or key press */
 function unlock(){if(unlocked)return;unlocked=true;syncMusic()}
 addEventListener("pointerdown",unlock,{capture:true});
 addEventListener("keydown",unlock,{capture:true});
-function volume(d){master=Math.max(0,Math.min(3,master+d));syncMusic();paintMusic()}
+function setVolume(v){
+  master=Math.max(0,Math.min(1,v));
+  try{localStorage.setItem("kviz-volume",master)}catch(e){}
+  if(curMode) fade(P[curMode],MUSIC[curMode].vol*master,150);
+  paintMusic();
+}
+function volume(d){setVolume(master+d)}
 function paintMusic(){
-  const b=$("#bMusic"), any=ok.menu||ok.lobby||ok.bed;
-  b.classList.toggle("on",any&&musicOn);
-  b.firstChild.textContent=!any?"Музыка: нет файлов":musicOn?`Музыка ${Math.round(master*100)}%`:"Музыка выкл";
+  const k=curMode, t=k&&playing[k], on=!!(k&&!P[k].paused);
+  $("#npName").textContent=!musicOn?"Музыка выключена":t?t[1]:"Музыка заиграет после клика";
+  $("#np").classList.toggle("live",on);
+  $("#bMute").classList.toggle("off",!musicOn);
+  $("#bMute").setAttribute("aria-label",musicOn?"Выключить музыку (M)":"Включить музыку (M)");
+  const vr=$("#vol"); if(document.activeElement!==vr) vr.value=Math.round(master*100);
+  vr.style.setProperty("--p",Math.round(master*100)+"%");
 }
 function hasTimer(s){return s.t==="q"||s.t==="box"}
 function setupTimer(){
@@ -584,9 +668,11 @@ function paintTimer(){
   c.textContent=`${Math.floor(tLeft/60)}:${String(tLeft%60).padStart(2,"0")}`;
   c.classList.toggle("low",tLeft<=10);
   $("#tbar i").style.transform=`scaleX(${tFull?tLeft/tFull:1})`;
-  $("#bTimer").classList.toggle("on",tRun);
-  $("#bTstart").hidden=!(hasTimer(slides[state.i])&&!tRun&&tLeft>0);
-  $("#bTstart").textContent=tLeft<tFull?"▶ Продолжить":"▶ Старт";
+  const timed=hasTimer(slides[state.i]), b=$("#bPlay");
+  b.disabled=!timed||tLeft<=0;
+  b.classList.toggle("run",tRun);
+  b.setAttribute("aria-label",tRun?"Пауза таймера (пробел)":tLeft<tFull?"Продолжить таймер (пробел)":"Запустить таймер (пробел)");
+  $("#ring").style.strokeDashoffset=timed&&tFull?RING*(1-tLeft/tFull):RING;
 }
 function startTimer(){
   if(!hasTimer(slides[state.i])||tLeft<=0) return;
@@ -617,7 +703,7 @@ function show(){
   el.classList.toggle("center",s.t==="round");
   const st=$("#bStart"); if(st) st.onclick=e=>{e.stopPropagation();unlock();go(1)};
   $("#prog").style.width=(state.i/(slides.length-1)*100)+"%";
-  pixelate(); setupTimer(); syncMusic(); save();
+  paintDock(s); pixelate(); setupTimer(); syncMusic();
 }
 /* once a round is started, every next question starts its timer by itself */
 function go(d){
@@ -647,7 +733,7 @@ $("#addTeam").onclick=()=>{state.teams.push({name:"Команда "+(state.teams
 let resetArm=false;
 $("#resetAll").onclick=()=>{
   if(!resetArm){resetArm=true;$("#resetNote").hidden=false;return}
-  state.teams.forEach(t=>t.pts=[]);state.i=0;resetArm=false;$("#resetNote").hidden=true;save();paintScores();show();
+  newGame();resetArm=false;$("#resetNote").hidden=true;save();paintScores();show();
 };
 function openScores(){stopTimer();paintScores();$("#ovScores").hidden=false;resetArm=false;$("#resetNote").hidden=true}
 function closeScores(){$("#ovScores").hidden=true;show()}
@@ -659,8 +745,11 @@ $("#closeHelp").onclick=()=>{$("#ovHelp").hidden=true};
 /* ---------- input ---------- */
 $("#bPrev").onclick=()=>go(-1);
 $("#bNext").onclick=()=>go(1);
-$("#bTimer").onclick=toggleTimer;
-$("#bMusic").onclick=musicBtn;
+$("#bPlay").onclick=toggleTimer;
+$("#bReset").onclick=resetTimer;
+$("#bMute").onclick=musicBtn;
+$("#vol").addEventListener("input",e=>setVolume(e.target.value/100));
+$("#vol").addEventListener("change",e=>e.target.blur());
 function full(){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen().catch(()=>{})}catch(e){}}
 $("#bFull").onclick=full;
 $("#stage").addEventListener("click",e=>{ if(e.clientX<innerWidth*0.25) go(-1); else go(1); });
@@ -690,14 +779,22 @@ document.addEventListener("keydown",e=>{
 });
 let idle;
 document.addEventListener("mousemove",()=>{document.body.classList.add("mouse");clearTimeout(idle);idle=setTimeout(()=>document.body.classList.remove("mouse"),2500)});
-$("#ctl").addEventListener("click",e=>e.stopPropagation());
-$("#bTstart").addEventListener("click",e=>{e.stopPropagation();startTimer()});
+$("#dock").addEventListener("click",e=>e.stopPropagation());
+/* the deck keeps focus off its buttons, so Space/arrows always drive the quiz, not the last clicked button */
+$("#dock").addEventListener("mouseup",e=>{const b=e.target.closest("button");if(b)b.blur()});
+function paintDock(s){
+  const r=ROUNDS[s.ri];
+  $("#dWhere").textContent=r?`Раунд ${s.ri+1}: ${r.name}`:cat.name;
+  const step={title:"Заставка",rules:"Правила",round:"Заставка раунда",q:"Вопрос",box:"Загадка",collect:"Сдаём листочки",ans:"Ответ",scores:"Таблица очков",break:"Перерыв",end:"Финал"}[s.t];
+  $("#dStep").textContent=(s.t==="q"||s.t==="box"||s.t==="ans")?`${step} ${s.qi+1} из ${r.qs.length}`:step;
+  $("#dSegs").innerHTML=ROUNDS.map((_,i)=>`<i class="${s.ri===undefined?(s.t==="end"?"done":""):i<s.ri?"done":i===s.ri?"now":""}"></i>`).join("");
+}
 
 /* ---------- screens: entry → categories → quiz ---------- */
 function setScreen(s){
   screen=s;
   $("#intro").hidden=s!=="intro"; $("#cats").hidden=s!=="cats";
-  $("#stage").hidden=s!=="quiz"; $("#ctl").hidden=s!=="quiz";
+  $("#stage").hidden=s!=="quiz"; $("#dock").hidden=s!=="quiz";
   if(s!=="quiz") stopTimer();
   if(s==="cats") paintCats();
   if(s==="quiz") show(); else syncMusic();
@@ -713,7 +810,7 @@ function paintCats(){
           <span class="nm">${esc(c.name)}</span>
           <span class="sb">${esc(c.sub)}</span>
           <span class="mt">${c.rounds.length} раундов · ${n} вопросов</span>
-          <span class="go">${going?"Продолжить игру →":"Играть →"}</span>
+          <span class="go">${going?"Продолжить игру":"Играть"}</span>
         </span>
       </button>
       ${going?`<button class="linkbtn" data-restart="${ci}">Начать заново</button>`:""}
@@ -722,7 +819,7 @@ function paintCats(){
 }
 function openCategory(ci,restart){
   const c=CATEGORIES[ci];
-  if(restart||state.cat!==c.id){state.i=0;for(const k in roundBed)delete roundBed[k]}
+  if(restart||state.cat!==c.id) newGame();
   state.cat=c.id; useCategory(c); setScreen("quiz");
 }
 $("#cards").addEventListener("click",e=>{
@@ -736,6 +833,7 @@ useCategory(CATEGORIES.find(c=>c.id===state.cat)||CATEGORIES[0]);
 if(!(state.i>=0&&state.i<slides.length)) state.i=0;
 paintMusic();
 const jump=new URLSearchParams(location.search).get("slide");
+if(new URLSearchParams(location.search).has("dock")) document.body.classList.add("mouse");
 if(jump!==null){state.i=+jump;setScreen("quiz")} else setScreen("intro");
 </script>
 </body>
