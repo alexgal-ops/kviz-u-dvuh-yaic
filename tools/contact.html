@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>contact sheet</title>
+<style>
+body{margin:0;background:#000;display:grid;grid-template-columns:repeat(4,480px);gap:4px;color:#fff;font:12px sans-serif}
+.c{width:480px;height:270px;overflow:hidden;position:relative}
+.c iframe{width:1920px;height:1080px;border:0;transform:scale(.25);transform-origin:0 0}
+.c b{position:absolute;left:4px;top:4px;background:#000c;padding:2px 6px;z-index:2}
+</style>
+<script>
+const q=new URLSearchParams(location.search), cat=q.get("cat"), list=(q.get("s")||"20,21,22,23,24,25,26,28,29,30,31,32,33,34").split(",");
+list.forEach(s=>{const open=s.endsWith("o");const n=parseInt(s);document.write(`<div class="c"><b>${n}${open?" open":""}</b><iframe src="../?cat=${cat}&slide=${n}${open?"&open":""}"></iframe></div>`)});
+</script>
